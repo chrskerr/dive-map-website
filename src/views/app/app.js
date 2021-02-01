@@ -9,41 +9,16 @@ import _ from "lodash";
 // App
 import Router from "./router";
 import FirebaseProvider from "./firebase";
+import reducer from "./reducer";
+import initialState from "./initialState";
 
-const initialState = {
-	auth: {
-		token: null,
-		client: null,
-		persistor: null,
-		isAuthenticating: true,
-		isAuthenticated: false,
-		signIn: () => {},
-		signOut: () => {},
-	},
-};
-
-const reducer = ( state, action ) => {
-	const { type, ...payload } = action;
-
-	switch ( type ) {
-	case "auth":
-		return {
-			...state,
-			auth: {
-				..._.get( state, "auth" ), 
-				...payload,
-			},
-		};
-	default: 
-		return { ...state };
-	}
-};
 
 export const State = createContext();
 
 export const App = () => {
 	const [ state, dispatch ] = useReducer( reducer, initialState );
 	const { token, client } = _.get( state, "auth" );
+	const breakpoint = _.get( state, "ui.breakpoint" );
 
 	useEffect(() => {
 		( async () => {
@@ -57,13 +32,34 @@ export const App = () => {
 				type: "auth", 
 				persistor: newPersistor,
 				client: new ApolloClient({
-					uri: "https://penne-pinching.herokuapp.com/v1/graphql",
+					uri: process.env.REACT_APP_HASURA_URL,
 					headers: token ? { Authorization: `Bearer ${ token }` } : {},
 					cache,
 				}),
 			});
 		})();
 	}, [ token ]);
+
+	const _setBreakpoint = () => {
+		const innerWidth = _.get( window, "innerWidth" );
+		let newBreakpoint;
+
+		if ( innerWidth >= 1920 ) newBreakpoint = "xl";
+		else if ( innerWidth >= 1280 ) newBreakpoint = "lg";
+		else if ( innerWidth >= 960 ) newBreakpoint = "md";
+		else if ( innerWidth >= 600 ) newBreakpoint = "sm";
+		else newBreakpoint = "xs";
+
+		if ( breakpoint !== newBreakpoint ) dispatch({ type: "ui", breakpoint: newBreakpoint });
+	};
+
+	useEffect(() => {
+		window.addEventListener( "resize", _setBreakpoint );
+	}, []);
+
+	useEffect(() => {
+		if ( !breakpoint ) _setBreakpoint();
+	}, [ breakpoint ]);
 
 	if ( !client ) return false;
 

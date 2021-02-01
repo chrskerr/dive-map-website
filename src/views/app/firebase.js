@@ -11,12 +11,12 @@ import _ from "lodash";
 import { State } from "../index";
 
 const firebaseConfig = {
-	apiKey: "AIzaSyB2Qvk47TBGk4H2f5naN_V378yW4qC5t_k",
-	authDomain: "dive-map-36d7c.firebaseapp.com",
-	projectId: "dive-map-36d7c",
-	storageBucket: "dive-map-36d7c.appspot.com",
-	messagingSenderId: "881441871258",
-	appId: "1:881441871258:web:37b4b7727f40be925f9623",
+	apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+	authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+	projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+	storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+	messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+	appId: process.env.REACT_APP_FIREBASE_APP_ID,
 };
 
 firebase.initializeApp( firebaseConfig );
@@ -25,17 +25,20 @@ export default function FirebaseProvider ({ children }) {
 	const [ state, dispatch ] = useContext( State );
 	const { token, persistor } = _.get( state, "auth" );
 
+	const firebaseAuth = firebase.auth();
+
 	useEffect(() => {
 		dispatch({ 
 			type: "auth",
-			signIn: async ( email, password ) => await firebase.auth().signInWithEmailAndPassword( email, password ),
+			signIn: async ( email, password ) => await firebaseAuth.signInWithEmailAndPassword( email, password ),
+			createAccount: async ( email, password ) => await firebaseAuth.createUserWithEmailAndPassword( email, password ),
 			signOut: () => {
-				firebase.auth().signOut();
+				firebaseAuth.signOut();
 				if ( persistor ) persistor.purge();
 			},
 		});
 
-		return firebase.auth().onAuthStateChanged( async user => {
+		return firebaseAuth.onAuthStateChanged( async user => {
 			dispatch({ type: "auth", isAuthenticating: true });
 			if ( user ) {
 				const token = await user.getIdToken();
