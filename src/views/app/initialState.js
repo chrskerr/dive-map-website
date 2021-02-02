@@ -4,7 +4,7 @@ export default {
 		token: null,
 		client: null,
 		persistor: null,
-		isAuthenticating: true,
+		isAuthenticating: false,
 		isAuthenticated: false,
 		signIn: () => {},
 		createAccount: () => {},

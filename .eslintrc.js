@@ -21,7 +21,6 @@ module.exports = {
 	},
 	"plugins": [
 		"react",
-		"react-hooks",
 	],
 	"rules": {
 		"indent": [ "error", "tab" ],
@@ -38,6 +37,5 @@ module.exports = {
 		"func-call-spacing": [ "error", "never" ],
 		"no-loop-func": "error",
 		"no-undef": "error",
-		"react-hooks/rules-of-hooks": "error",
 	},
 };
