@@ -44,14 +44,20 @@ export default function FirebaseProvider ({ children }) {
 				const token = await user.getIdToken();
 				const idTokenResult = await user.getIdTokenResult();
 				const hasuraClaim = idTokenResult.claims[ "https://hasura.io/jwt/claims" ];
-				if ( hasuraClaim ) {
-					dispatch({ type: "auth", token });
-				} else {
-					dispatch({ type: "auth", token: null });
+				
+				if ( hasuraClaim ) dispatch({ type: "auth", token });
+				else {
+					const token = await user.getIdToken( true );
+					const idTokenResult = await user.getIdTokenResult();
+					const hasuraClaim = idTokenResult.claims[ "https://hasura.io/jwt/claims" ];
+					
+					if ( hasuraClaim ) dispatch({ type: "auth", token });
+					else dispatch({ type: "auth", token: null });
 				}
-			} else {
-				dispatch({ type: "auth", token: null });
-			}
+
+			} 
+			else dispatch({ type: "auth", token: null });
+
 			dispatch({ type: "auth", isAuthenticating: false });
 		});
 	}, []);

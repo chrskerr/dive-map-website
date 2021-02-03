@@ -85,8 +85,8 @@ export default function TopNav () {
 			>
 				<div className={ classes.modal }>
 					<Paper className={ classes.paper }>
-						{ openModal === "sign-in" && <SignIn /> }
-						{ openModal === "join" && <Join /> }
+						{ openModal === "sign-in" && <SignIn closeModal={ () => setOpenModal( false ) } /> }
+						{ openModal === "join" && <Join closeModal={ () => setOpenModal( false ) } /> }
 					</Paper>
 				</div>
 			</Modal>
