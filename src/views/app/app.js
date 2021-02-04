@@ -25,7 +25,7 @@ export const State = createContext();
 
 export const App = () => {
 	const [ state, dispatch ] = useReducer( reducer, initialState );
-	const { token, client } = _.get( state, "auth" );
+	const { token, client, isAuthenticated } = _.get( state, "auth" );
 	const breakpoint = _.get( state, "ui.breakpoint" );
 	const classes = useStyles();
 
@@ -42,7 +42,7 @@ export const App = () => {
 				persistor: newPersistor,
 				client: new ApolloClient({
 					uri: process.env.REACT_APP_HASURA_URL,
-					headers: token ? { Authorization: `Bearer ${ token }` } : {},
+					headers: isAuthenticated ? { Authorization: `Bearer ${ token }` } : {},
 					cache,
 				}),
 			});

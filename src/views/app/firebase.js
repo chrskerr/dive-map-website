@@ -23,49 +23,66 @@ firebase.initializeApp( firebaseConfig );
 
 export default function FirebaseProvider ({ children }) {
 	const [ state, dispatch ] = useContext( State );
-	const { token, persistor } = _.get( state, "auth" );
+	const { token, persistor, hasHasuraClaims } = _.get( state, "auth" );
 
 	const firebaseAuth = firebase.auth();
+	const currentFirebaseUser = _.get( firebaseAuth, "currentUser" );
 
 	useEffect(() => {
 		dispatch({ 
 			type: "auth",
-			signIn: async ( email, password ) => await firebaseAuth.signInWithEmailAndPassword( email, password ),
-			createAccount: async ( email, password ) => await firebaseAuth.createUserWithEmailAndPassword( email, password ),
+			signIn: async ( email, password ) => {
+				dispatch({ type: "auth", isAuthenticating: true });
+				return await firebaseAuth.signInWithEmailAndPassword( email, password );
+			},
+			createAccount: async ( email, password ) => {
+				dispatch({ type: "auth", isAuthenticating: true });
+				const { user } = await firebaseAuth.createUserWithEmailAndPassword( email, password );
+
+				const getClaims = ( loop = 0 ) => {
+					if ( loop === 30 ) return;
+					return new Promise( resolve => setTimeout( async () => {
+						await user.getIdToken( true );
+						const idTokenResult = await user.getIdTokenResult();
+						const hasuraClaims = idTokenResult.claims[ "https://hasura.io/jwt/claims" ];
+						return hasuraClaims ? resolve() : await getClaims( loop + 1 );
+					}, 200 ));
+				};
+
+				return await getClaims();
+			},
 			signOut: () => {
 				firebaseAuth.signOut();
 				if ( persistor ) persistor.purge();
 			},
 		});
+	}, []);
 
-		return firebaseAuth.onAuthStateChanged( async user => {
+	useEffect(() => {
+		return firebaseAuth.onIdTokenChanged( async user => {
 			dispatch({ type: "auth", isAuthenticating: true });
+
 			if ( user ) {
 				const token = await user.getIdToken();
+				dispatch({ type: "auth", token });
+
 				const idTokenResult = await user.getIdTokenResult();
 				const hasuraClaim = idTokenResult.claims[ "https://hasura.io/jwt/claims" ];
 				
-				if ( hasuraClaim ) dispatch({ type: "auth", token });
-				else {
-					const token = await user.getIdToken( true );
-					const idTokenResult = await user.getIdTokenResult();
-					const hasuraClaim = idTokenResult.claims[ "https://hasura.io/jwt/claims" ];
-					
-					if ( hasuraClaim ) dispatch({ type: "auth", token });
-					else dispatch({ type: "auth", token: null });
-				}
-
-			} 
-			else dispatch({ type: "auth", token: null });
-
-			dispatch({ type: "auth", isAuthenticating: false });
+				if ( hasuraClaim ) dispatch({ type: "auth", hasHasuraClaims: true, isAuthenticated: true, isAuthenticating: false });
+				else dispatch({ type: "auth", hasHasuraClaims: false, isAuthenticated: false });
+			}
+			else dispatch({ type: "auth", token: null, isAuthenticating: false, isAuthenticated: false });
 		});
 	}, []);
 
 	useEffect(() => {
-		if ( token ) dispatch({ type: "auth", isAuthenticated: true });
-		else dispatch({ type: "auth", isAuthenticated: false });
-	}, [ token ]);
+		if ( token && currentFirebaseUser ) {
+			if ( hasHasuraClaims ) dispatch({ type: "auth", isAuthenticated: true, isAuthenticating: false });
+			else setTimeout(() => currentFirebaseUser.getIdToken( true ), 500 );
+		}
+		else dispatch({ type: "auth", isAuthenticated: false, isAuthenticating: false, hasHasuraClaims: false });
+	}, [ token, hasHasuraClaims ]);
 
 	return (
 		<>

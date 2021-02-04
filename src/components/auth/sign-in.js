@@ -12,9 +12,9 @@ import _ from "lodash";
 // App
 import { State } from "../";
 
-const useStyles = makeStyles({
+const useStyles = makeStyles( theme => ({
 	fields: {
-		marginBottom: "1rem",
+		marginBottom: theme.spacing( 2 ),
 	},
 	spinner: {
 		animation: "$rotation 2s infinite linear",
@@ -27,7 +27,7 @@ const useStyles = makeStyles({
 			transform: "rotate(359deg)",
 		},
 	},
-});
+}));
 
 const validationSchema = yup.object({
 	username: yup
@@ -62,7 +62,7 @@ export default function SignIn ({ closeModal }) {
 
 	return (
 		<div>
-			<Typography variant="h1">Sign In</Typography>
+			<Typography paragraph={ true } color="textSecondary">Sign into your account with us to add & edit dive sites, and to leave reviews.</Typography>
 			<form onSubmit={ formik.handleSubmit }>
 				<TextField
 					className={ classes.fields }

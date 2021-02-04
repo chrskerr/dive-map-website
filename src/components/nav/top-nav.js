@@ -3,12 +3,12 @@
 import React, { useState, useContext } from "react";
 import _ from "lodash";
 import { useHistory, useLocation } from "react-router-dom";
-import { AppBar, Toolbar, IconButton, Menu, MenuItem, Typography, Drawer, List, ListItem, ListItemAvatar, ListItemText, Modal, Paper } from "@material-ui/core";
+import { AppBar, Toolbar, IconButton, Typography, Drawer, List, ListItem, ListItemAvatar, ListItemText, Modal, Paper } from "@material-ui/core";
 import { MenuRounded, AssignmentIndRounded, HomeRounded, ExploreRounded } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
 
 // App
-import { State, SignIn, Join } from "../";
+import { State, AuthComponent } from "../";
 
 const useStyles = makeStyles({
 	root: {
@@ -22,12 +22,16 @@ const useStyles = makeStyles({
 	},
 	modal: {
 		position: "absolute",
-		top: "35%",
+		top: "20%",
 		left: "30%",
 		right: "30%",
 	},
 	paper: {
 		padding: "2rem 3rem",
+	},
+	link: {
+		cursor: "pointer",
+		color: "white",
 	},
 });
 
@@ -39,17 +43,9 @@ export default function TopNav () {
 
 	const [ state ] = useContext( State );
 	const [ isDrawerOpen, setIsDrawerOpen ] = useState( false );
-	const [ accountMenuRef, setAccountMenuRef ] = useState( false );
-	const [ openModal, setOpenModal ] = useState( false );
+	const [ isModalOpen, setIsModalOpen ] = useState( false );
 
-	const isAuthenticated = _.get( state, "auth.isAuthenticated" );
-	const signOut = _.get( state, "auth.signOut" );
-
-	const handleOpenModal = modal => {
-		setOpenModal( modal );
-		setIsDrawerOpen( false );
-		setAccountMenuRef( false );
-	};
+	const { isAuthenticated, isAuthenticating } = _.get( state, "auth" );
 
 	const handleNavigate = route => {
 		setIsDrawerOpen( false );
@@ -69,27 +65,15 @@ export default function TopNav () {
 						<MenuRounded />
 					</IconButton>
 					<Typography variant="h6" className={ classes.title }>Diving Map</Typography>
-					<IconButton
-						aria-label="account of current user" aria-controls="menu-appbar" aria-haspopup="true"
-						onClick={ e => setAccountMenuRef( e.currentTarget ) }
-						color="inherit"
-					>
-						<AssignmentIndRounded />
-					</IconButton>
+					{ !isAuthenticating && <>
+						{ isAuthenticated ? 
+							<Typography className={ classes.link } onClick={ () => history.push( "/account" ) }>Account</Typography>
+							: 
+							<Typography className={ classes.link } onClick={ () => setIsModalOpen( true )}>Sign In / Sign Up</Typography> 
+						}
+					</> }
 				</Toolbar>
 			</AppBar>
-
-			<Modal
-				open={ Boolean( openModal ) } 
-				onClose={ () => setOpenModal( false ) }	
-			>
-				<div className={ classes.modal }>
-					<Paper className={ classes.paper }>
-						{ openModal === "sign-in" && <SignIn closeModal={ () => setOpenModal( false ) } /> }
-						{ openModal === "join" && <Join closeModal={ () => setOpenModal( false ) } /> }
-					</Paper>
-				</div>
-			</Modal>
 
 			<Drawer open={ isDrawerOpen } onClose={ () => setIsDrawerOpen( false ) }>
 				<List>
@@ -128,30 +112,16 @@ export default function TopNav () {
 				</List>
 			</Drawer>
 
-			<Menu id="menu-appbar-accounts" anchorEl={ accountMenuRef } keepMounted
-				anchorOrigin={{
-					vertical: "top",
-					horizontal: "right",
-				}}
-				transformOrigin={{
-					vertical: "top",
-					horizontal: "right",
-				}}
-				open={ Boolean( accountMenuRef ) }
-				onClose={ () => setAccountMenuRef( null )}
+			<Modal
+				open={ isModalOpen } 
+				onClose={ () => setIsModalOpen( false ) }	
 			>
-				{ isAuthenticated ? 
-					<div>
-						<MenuItem onClick={ () => history.push( "/account" ) }>Profile</MenuItem>
-						<MenuItem onClick={ signOut }>Sign Out</MenuItem>
-					</div>
-					: 
-					<div>
-						<MenuItem onClick={ () => handleOpenModal( "join" ) }>Create Account</MenuItem>
-						<MenuItem onClick={ () => handleOpenModal( "sign-in" ) }>Sign In</MenuItem>
-					</div>
-				}
-			</Menu>
+				<div className={ classes.modal }>
+					<Paper className={ classes.paper }>
+						<AuthComponent closeModal={ () => setIsModalOpen( false ) } />
+					</Paper>
+				</div>
+			</Modal>
 		</div>
 	);
 }

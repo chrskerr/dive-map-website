@@ -2,7 +2,7 @@
 // Packages
 import React, { useContext, useEffect } from "react";
 import PropTypes from "prop-types";
-import { TextField, Button } from "@material-ui/core";
+import { TextField, Button, Typography } from "@material-ui/core";
 import { ChevronRight, AutorenewRounded } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
 import { useFormik } from "formik";
@@ -12,9 +12,9 @@ import _ from "lodash";
 // App
 import { State } from "../";
 
-const useStyles = makeStyles({
+const useStyles = makeStyles( theme => ({
 	fields: {
-		marginBottom: "1rem",
+		marginBottom: theme.spacing( 2 ),
 	},
 	spinner: {
 		animation: "$rotation 2s infinite linear",
@@ -27,7 +27,7 @@ const useStyles = makeStyles({
 			transform: "rotate(359deg)",
 		},
 	},
-});
+}));
 
 let zxcvbn;
 
@@ -53,7 +53,7 @@ const validationSchema = yup.object({
 		}),
 });
 
-export default function Join ({ closeModal }) {
+export default function SignUp ({ closeModal }) {
 	const classes = useStyles();
 	const [ state ] = useContext( State );
 	const createAccount = _.get( state, "auth.createAccount" );
@@ -67,7 +67,8 @@ export default function Join ({ closeModal }) {
 		validationSchema: validationSchema,
 		onSubmit: async ( values, { setFieldError }) => {
 			try {
-				await createAccount( _.get( values, "username" ), _.get( values, "password" ));
+				const res = await createAccount( _.get( values, "username" ), _.get( values, "password" ));
+				console.log( "res", res );
 				if ( closeModal ) closeModal();
 			} catch ( error ) {
 				const code = _.get( error, "code" );
@@ -79,6 +80,7 @@ export default function Join ({ closeModal }) {
 
 	return (
 		<div>
+			<Typography paragraph={ true } color="textSecondary">You can create an account with us to create and edit dive sites, and to review existing dive sites to help the community do better diving</Typography>
 			<form onSubmit={ formik.handleSubmit }>
 				<TextField
 					className={ classes.fields }
@@ -126,6 +128,6 @@ export default function Join ({ closeModal }) {
 		</div>
 	);
 }
-Join.propTypes = {
+SignUp.propTypes = {
 	closeModal: PropTypes.func,
 };

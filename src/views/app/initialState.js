@@ -2,6 +2,7 @@
 export default {
 	auth: {
 		token: null,
+		hasHasuraClaims: false,
 		client: null,
 		persistor: null,
 		isAuthenticating: false,

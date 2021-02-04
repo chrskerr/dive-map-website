@@ -7,17 +7,16 @@ import { makeStyles } from "@material-ui/core/styles";
 
 // App
 import { TopNav, BottomNav } from "../../components";
-import { State, Explore, New } from "../index";
+import { State, Explore, New, Account } from "../index";
 
 const NotFound = () => <h1>404</h1>;
 const Home = () => <h1>Home</h1>;
 const AR = () => <h1>AR</h1>;
-const Account = () => <h1>Account</h1>;
 
 const useStyles = makeStyles({
 	root: {
 		flexGrow: 1,
-		padding: "1rem 2rem",
+		display: "flex", flexDirection: "column",
 	},
 });
 
