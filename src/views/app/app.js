@@ -11,7 +11,8 @@ import { makeStyles } from "@material-ui/core/styles";
 import Router from "./router";
 import FirebaseProvider from "./firebase";
 import reducer from "./reducer";
-import initialState from "./initialState";
+import initialState from "./initial-state";
+import Theme from "./theme";
 
 const useStyles = makeStyles({
 	root: {
@@ -77,7 +78,9 @@ export const App = () => {
 			<State.Provider value={ [ state, dispatch ] }>
 				<ApolloProvider client={ client }>
 					<FirebaseProvider>
-						<Router />
+						<Theme>
+							<Router />
+						</Theme>
 					</FirebaseProvider>
 				</ApolloProvider>
 			</State.Provider>
