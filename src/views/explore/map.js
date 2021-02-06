@@ -8,6 +8,7 @@ import { makeStyles } from "@material-ui/core/styles";
 import { MapContainer, TileLayer, MapConsumer, Marker, Tooltip, Polygon, Polyline } from "react-leaflet";
 import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
 import L from "leaflet";
+import "leaflet.offline";
 import greenIcon from "./leaflet-icon/marker-icon-2x-green-#2AAD27.png";
 import violetIcon from "./leaflet-icon/marker-icon-2x-violet-#9C2BCB.png";
 import shadow from "./leaflet-icon/marker-shadow.png";
@@ -22,7 +23,7 @@ const useStyles = makeStyles( theme => ({
 	},
 	controls: {
 		position: "absolute", zIndex: 1000,
-		bottom: theme.spacing( 3 ), right: theme.spacing( 1 ),
+		bottom: theme.spacing( 3 ), left: theme.spacing( 3 ),
 		"& .MuiTypography-root, & .MuiFormLabel-root": {
 			fontSize: "80%",
 			color: theme.palette.grey[ "800" ],
@@ -154,11 +155,12 @@ export default function Map ({ allDives, reducerBag }) {
 					}, [ bounds ]);
 	
 					useEffect(() => { 
-						setTimeout(() => map.invalidateSize(), 150 );
 						map.on( "zoomend", () => updateBounds());
 						map.on( "moveend", () => updateBounds());
 						map.on( "resize", () => updateBounds());
 						map.addControl( searchProvider );
+
+						setTimeout(() => map.invalidateSize(), 150 );
 					}, []);
 
 					useEffect(() => {

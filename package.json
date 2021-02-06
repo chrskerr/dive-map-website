@@ -15,6 +15,7 @@
     "graphql": "^15.5.0",
     "leaflet": "^1.7.1",
     "leaflet-geosearch": "^3.2.1",
+    "leaflet.offline": "^2.0.0-beta.4",
     "localforage": "^1.9.0",
     "lodash": "^4.17.20",
     "react": "^17.0.1",
@@ -24,6 +25,7 @@
     "react-router-dom": "^5.2.0",
     "react-scripts": "4.0.1",
     "react-spring": "^8.0.27",
+    "use-mobile-detect-hook": "^1.0.3",
     "web-vitals": "^0.2.4",
     "yup": "^0.32.8",
     "zxcvbn": "^4.4.2"

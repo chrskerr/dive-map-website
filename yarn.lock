@@ -6734,6 +6734,11 @@ idb@3.0.2:
   resolved "https://registry.yarnpkg.com/idb/-/idb-3.0.2.tgz#c8e9122d5ddd40f13b60ae665e4862f8b13fa384"
   integrity sha512-+FLa/0sTXqyux0o6C+i2lOR0VoS60LU/jzUo5xjfY6+7sEEgy4Gz1O7yFBXvjd7N0NyIGWIRg8DcQSLEG+VSPw==
 
+idb@^4.0.5:
+  version "4.0.5"
+  resolved "https://registry.yarnpkg.com/idb/-/idb-4.0.5.tgz#23b930fbb0abce391e939c35b7b31a669e74041f"
+  integrity sha512-P+Fk9HT2h1DhXoE1YNK183SY+CRh2GHNh28de94sGwhe0bUA75JJeVJWt3SenE5p0BXK7maflIq29dl6UZHrFw==
+
 identity-obj-proxy@3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/identity-obj-proxy/-/identity-obj-proxy-3.0.0.tgz#94d2bda96084453ef36fbc5aaec37e0f79f1fc14"
@@ -8051,6 +8056,13 @@ leaflet-geosearch@^3.2.1:
   integrity sha512-GAVuuDy3+Kva+JmuxGYLIaRTQgSVvWSh6IADtEJS0SLOuclxBd965qrrjtI1U4TYBLYr4p5IKOTQHwJQcrATtQ==
   optionalDependencies:
     leaflet "^1.6.0"
+
+leaflet.offline@^2.0.0-beta.4:
+  version "2.0.0-beta.4"
+  resolved "https://registry.yarnpkg.com/leaflet.offline/-/leaflet.offline-2.0.0-beta.4.tgz#79dc82782c378640005ceea54773276dcebad2e8"
+  integrity sha512-N61qcYqPRLI5nZBVEZk3m2hPnkWKY4mR3AScAUbQTT+NZDhk82SmfOwF3/doPD7akrXzmcm4Ir55BMjr+GDWMg==
+  dependencies:
+    idb "^4.0.5"
 
 leaflet@^1.6.0, leaflet@^1.7.1:
   version "1.7.1"
@@ -12472,6 +12484,11 @@ url@^0.11.0:
   dependencies:
     punycode "1.3.2"
     querystring "0.2.0"
+
+use-mobile-detect-hook@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/use-mobile-detect-hook/-/use-mobile-detect-hook-1.0.3.tgz#7321965ba83de3872853e8b2177eca76f93a2820"
+  integrity sha512-XJEThybLa7fV076MqbuObaIZa6031zA/F9tma0UxdO1fMrNm7LxmS7kLgfn4jE8Ly+WBqnwxO/Kh11eIzpZ2Dw==
 
 use@^3.1.0:
   version "3.1.1"

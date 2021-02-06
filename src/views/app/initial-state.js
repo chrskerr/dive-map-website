@@ -13,6 +13,13 @@ export default {
 	},
 	ui: {
 		breakpoint: null,
+		isSmall: false,
+		deviceType: {
+			isDesktop: false,
+			isMobile: false,
+			isIos: false,
+			isDesktAndroid: false,
+		},
 	},
 	user: {
 		id: "",

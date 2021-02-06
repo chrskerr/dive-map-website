@@ -8,14 +8,24 @@ import { MenuRounded, AssignmentIndRounded, HomeRounded, ExploreRounded } from "
 import { makeStyles } from "@material-ui/core/styles";
 
 // App
-import { State, AuthComponent } from "../";
+import { State, AuthComponent, Icon } from "../";
 
-const useStyles = makeStyles({
+const useStyles = makeStyles( theme => ({
 	root: {
 		flexGrow: 0,
 	},
-	title: {
+	drawerIcon: {
+		paddingRight: theme.spacing( 4 ),
+	},
+	betaText: {
 		flexGrow: 1,
+		paddingLeft: theme.spacing( 0.5 ),
+		marginTop: "4.5px",
+		fontStyle: "italic",
+		fontSize: "80%",
+	},
+	titleText: {
+		paddingLeft: theme.spacing( 2 ),
 	},
 	listItem: {
 		width: "16rem",
@@ -33,7 +43,7 @@ const useStyles = makeStyles({
 		cursor: "pointer",
 		color: "white",
 	},
-});
+}));
 
 export default function TopNav () {
 	const history = useHistory();
@@ -60,11 +70,14 @@ export default function TopNav () {
 				<Toolbar variant="dense">
 					<IconButton 
 						edge="start" color="inherit" aria-label="menu"
+						className={ classes.drawerIcon }
 						onClick={ () => setIsDrawerOpen( true ) }
 					>
 						<MenuRounded />
 					</IconButton>
-					<Typography variant="h6" className={ classes.title }>Diving Map</Typography>
+					<Icon style="jellyfish-outlined" colour="#fff" size="small" />
+					<Typography variant="h6" className={ classes.titleText }>Jellyfish</Typography>
+					<Typography className={ classes.betaText }>beta</Typography>
 					{ !isAuthenticating && <>
 						{ isAuthenticated ? 
 							<Typography className={ classes.link } onClick={ () => history.push( "/account" ) }>Account</Typography>
@@ -77,20 +90,19 @@ export default function TopNav () {
 
 			<Drawer open={ isDrawerOpen } onClose={ () => setIsDrawerOpen( false ) }>
 				<List>
+					<ListItem alignItems="center">
+						<Icon style="jellyfish-blue" size="large" />
+					</ListItem>
+					<ListItem divider>
+						<Typography variant="h5">Jellyfish</Typography>
+						<Typography className={ classes.betaText }>beta</Typography>
+					</ListItem>
 					<ListItem className={ classes.listItem } button selected={ selectedDrawerItem === "/" } onClick={ () => handleNavigate( "/" ) }>
 						<ListItemAvatar>
 							<HomeRounded />
 						</ListItemAvatar>
 						<ListItemText>
 							Home
-						</ListItemText>
-					</ListItem>
-					<ListItem className={ classes.listItem } button selected={ selectedDrawerItem === "/new" } onClick={ () => handleNavigate( "/new" ) }>
-						<ListItemAvatar>
-							<ExploreRounded />
-						</ListItemAvatar>
-						<ListItemText>
-							Add New Dive Site
 						</ListItemText>
 					</ListItem>
 					<ListItem className={ classes.listItem } button selected={ selectedDrawerItem === "/explore" } onClick={ () => handleNavigate( "/explore" ) }>
@@ -101,7 +113,7 @@ export default function TopNav () {
 							Explore
 						</ListItemText>
 					</ListItem>
-					<ListItem className={ classes.listItem } button selected={ selectedDrawerItem === "/account" } onClick={ () => handleNavigate( "/account" ) }>
+					<ListItem className={ classes.listItem } divider button selected={ selectedDrawerItem === "/account" } onClick={ () => handleNavigate( "/account" ) }>
 						<ListItemAvatar>
 							<AssignmentIndRounded />
 						</ListItemAvatar>

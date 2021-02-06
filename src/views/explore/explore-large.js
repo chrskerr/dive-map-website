@@ -11,7 +11,7 @@ import { useSpring, animated as a } from "react-spring";
 
 // App
 import Map from "./map";
-import Add from "./add";
+import AddEdit from "./add-edit";
 
 const useStyles = makeStyles( theme => ({
 	root: {
@@ -80,7 +80,7 @@ export default function ExploreLarge ({ reducerBag, dives }) {
 			<a.div className={ classes.container } style={ diveAddProps }>
 				{ isAdding ? 
 					<div className={ classes.content }>
-						<Add reducerBag={ reducerBag } />
+						<AddEdit editing={ false } reducerBag={ reducerBag } />
 					</div>
 					:
 					<div className={ classes.content }>

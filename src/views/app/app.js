@@ -6,6 +6,7 @@ import { CachePersistor, LocalForageWrapper } from "apollo3-cache-persist";
 import localforage from "localforage";
 import _ from "lodash";
 import { makeStyles } from "@material-ui/core/styles";
+import useMobileDetect from "use-mobile-detect-hook";
 
 // App
 import Router from "./router";
@@ -70,6 +71,18 @@ export const App = () => {
 	useEffect(() => {
 		if ( !breakpoint ) _setBreakpoint();
 	}, [ breakpoint ]);
+
+		
+	const detectMobile = useMobileDetect();
+	const deviceType = {
+		isDesktop: detectMobile.isDesktop(),
+		isMobile: detectMobile.isMobile(),
+		isIos: detectMobile.isIos(),
+		isDesktAndroid: detectMobile.isAndroid(),
+	};
+	useEffect(() => {
+		if ( !_.isEqual( deviceType, state.ui.deviceType )) dispatch({ type: "ui", deviceType });
+	}, [ deviceType ]);
 
 	if ( !client ) return false;
 

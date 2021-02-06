@@ -7,10 +7,9 @@ import { makeStyles } from "@material-ui/core/styles";
 
 // App
 import { TopNav, BottomNav } from "../../components";
-import { State, Explore, New, Account } from "../index";
+import { State, Explore, Home, Account } from "../index";
 
 const NotFound = () => <h1>404</h1>;
-const Home = () => <h1>Home</h1>;
 const AR = () => <h1>AR</h1>;
 
 const useStyles = makeStyles({
@@ -35,11 +34,6 @@ export default function Router () {
 		map: {
 			path: "/explore/:dive?",
 			component: Explore,
-		},
-
-		new: {
-			path: "/new",
-			component: New,
 		},
 	
 		ar: {

@@ -4,4 +4,6 @@ export { default as BottomNav } from "./nav/bottom-nav";
 
 export { default as AuthComponent } from "./auth/index";
 
+export { default as Icon } from "./custom-icons/icon";
+
 export { State } from "../views";

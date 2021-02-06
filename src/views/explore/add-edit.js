@@ -67,7 +67,7 @@ const INSERT_DIVE = gql`
 	}
 `;
 
-export default function Add ({ reducerBag }) {
+export default function AddEdit ({ reducerBag, editing = false }) {
 	const classes = useStyles();
 	
 	const [ appState ] = useContext( State );
@@ -112,6 +112,8 @@ export default function Add ({ reducerBag }) {
 			}
 		},
 	});
+
+	console.log( editing );
 	
 	useEffect(() => {
 		if ( !_.isEqual( formik.values.type, savedDiveType )) dispatch({ type: "addEdit.updateDiveType", diveType: formik.values.type });
@@ -275,6 +277,7 @@ export default function Add ({ reducerBag }) {
 		</form>
 	);
 }
-Add.propTypes = {
+AddEdit.propTypes = {
 	reducerBag: PropTypes.array,
+	editing: PropTypes.bool,
 };
