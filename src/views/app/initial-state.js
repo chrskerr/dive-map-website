@@ -14,4 +14,10 @@ export default {
 	ui: {
 		breakpoint: null,
 	},
+	user: {
+		id: "",
+		uid: "",
+		username: "",
+		email: "",
+	},
 };

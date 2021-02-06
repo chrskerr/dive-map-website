@@ -48,7 +48,7 @@ export const App = () => {
 				}),
 			});
 		})();
-	}, [ token ]);
+	}, [ token, isAuthenticated ]);
 
 	const _setBreakpoint = () => {
 		const innerWidth = _.get( window, "innerWidth" );

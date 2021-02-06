@@ -1,6 +1,7 @@
 
 // Packages
-import React, { useReducer, useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import PropTypes from "prop-types";
 import { useParams } from "react-router-dom";
 import _ from "lodash";
 import { Button, Paper } from "@material-ui/core";
@@ -24,6 +25,9 @@ const useStyles = makeStyles( theme => ({
 	},
 	content: {
 		padding: theme.spacing( 2 ),
+		overflowY: "scroll",
+		overflowX: "hidden",
+		height: "100%",
 	},
 	listItem: {
 		marginBottom: theme.spacing( 2 ),
@@ -33,13 +37,13 @@ const useStyles = makeStyles( theme => ({
 	},
 }));
 
-export default function ExploreLarge () {
+export default function ExploreLarge ({ reducerBag, dives }) {
 	const classes = useStyles();
 	const { dive } = useParams();
 	
-	const [ bounds, setBounds ] = useState();
-	const [ state, dispatch ] = useReducer( reducer, initialState );
-	const { viewType, viewName, isEditing, isAdding } = state;
+	const [ state, dispatch ] = reducerBag;
+	const { viewType, viewName, isEditing, isAdding } = _.get( state, "lgView" ) || {};
+	// const bounds = _.get( state, "map.bounds" );
 
 	const mapProps = useSpring( _.get( sizingMap, [ viewType, "map" ]));
 	const listProps = useSpring( _.get( sizingMap, [ viewType, "list" ]));
@@ -47,27 +51,25 @@ export default function ExploreLarge () {
 	const historyEditProps = useSpring( _.get( sizingMap, [ viewType, "historyEdit" ]));
 
 	useEffect(() => {
-		if ( !dive && viewName !== "viewAll" && viewName !== "add" ) dispatch({ type: "viewAll" });
-		if ( dive && viewName === "viewAll" ) dispatch({ type: "viewOne" });
+		if ( !dive && viewName !== "viewAll" && viewName !== "add" ) dispatch({ type: "lgView.viewAll" });
+		if ( dive && viewName === "viewAll" ) dispatch({ type: "lgView.viewOne" });
 	}, [ dive, viewName ]);
 
-
-	const filteredDiveSites = [{ name: "siteOne" }];
-	console.log( bounds );
+	const filteredDiveSites = dives;
 
 	return ( <>
 		<div className={ classes.root }>
 			<a.div className={ classes.container } style={ mapProps }>
-				<Map emitBounds={ bounds => setBounds( bounds ) } />
+				<Map reducerBag={ reducerBag } allDives={ dives } />
 			</a.div>
 			<a.div className={ classes.container } style={ listProps }>
 				<div className={ classes.content }>
 					<div className={ classes.listItem }>
-						<Button variant='outlined' size="small" disabled={ viewName === "add" } fullWidth endIcon={ <AddRounded /> } onClick={ () => dispatch({ type: "add" })}>Add a New Dive</Button>
+						<Button variant='outlined' size="small" disabled={ viewName === "add" } fullWidth endIcon={ <AddRounded /> } onClick={ () => dispatch({ type: "lgView.add" })}>Add a New Dive</Button>
 					</div>
 					{ !_.isEmpty( filteredDiveSites ) && _.map( filteredDiveSites, site => {
-						const { name } = site;
-						return <div className={ classes.listItem }>
+						const { id, name } = site;
+						return <div className={ classes.listItem } key={ id }>
 							<Paper>
 								<p>{ name }</p>
 							</Paper>
@@ -78,7 +80,7 @@ export default function ExploreLarge () {
 			<a.div className={ classes.container } style={ diveAddProps }>
 				{ isAdding ? 
 					<div className={ classes.content }>
-						<Add cancel={ () => dispatch({ type: "viewAll" }) } />
+						<Add reducerBag={ reducerBag } />
 					</div>
 					:
 					<div className={ classes.content }>
@@ -91,6 +93,10 @@ export default function ExploreLarge () {
 		</div>
 	</> );
 }
+ExploreLarge.propTypes = {
+	reducerBag: PropTypes.array,
+	dives: PropTypes.array,
+};
 
 const sizingMap = {
 	viewAll: {
@@ -111,55 +117,4 @@ const sizingMap = {
 		diveAdd: { left: "30%", right: "50%", opacity: 1 },
 		historyEdit: { left: "50%", right: "0%", opacity: 1 },
 	},
-};
-
-const reducer = ( state, action ) => {
-	const { type } = action;
-
-	switch ( type ) {
-	case "viewAll":
-		return {
-			viewName: "viewAll",
-			viewType: "viewAll",
-			isEditing: false,
-			isAdding: false,
-		};
-	case "add":
-		return {
-			viewName: "add",
-			viewType: "viewOne",
-			isEditing: false,
-			isAdding: true,
-		};
-	case "viewOne":
-		return {
-			viewName: "viewOne",
-			viewType: "viewOne",
-			isEditing: false,
-			isAdding: false,
-		};
-	case "history":
-		return {
-			viewName: "history",
-			viewType: "viewHistoryEdit",
-			isEditing: false,
-			isAdding: false,
-		};
-	case "edit":
-		return {
-			viewName: "edit",
-			viewType: "viewHistoryEdit",
-			isEditing: true,
-			isAdding: false,
-		};
-	default: 
-		return state;
-	}
-};
-
-const initialState = {
-	viewName: "viewAll",
-	viewType: "viewAll",
-	isEditing: false,
-	isAdding: false,
 };

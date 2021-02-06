@@ -5,10 +5,18 @@ import PropTypes from "prop-types";
 import firebase from "firebase/app";
 import "firebase/auth";
 import _ from "lodash";
-
+import { gql, useQuery } from "@apollo/client";
 
 // App
 import { State } from "../index";
+
+const GET_USER = gql`
+	query GetUser( $uid: String! ) {
+		users( where: { uid: { _eq: $uid }}, limit: 1 ) {
+			id uid email username
+		}
+	}
+`;
 
 const firebaseConfig = {
 	apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -39,20 +47,22 @@ export default function FirebaseProvider ({ children }) {
 				dispatch({ type: "auth", isAuthenticating: true });
 				const { user } = await firebaseAuth.createUserWithEmailAndPassword( email, password );
 
-				const getClaims = ( loop = 0 ) => {
-					if ( loop === 30 ) return;
-					return new Promise( resolve => setTimeout( async () => {
+				const getClaims = async ( loop = 0, resolve ) => {
+					if ( loop === 30 ) return resolve();
+					return await new Promise( resolve => setTimeout( async () => {
 						await user.getIdToken( true );
 						const idTokenResult = await user.getIdTokenResult();
 						const hasuraClaims = idTokenResult.claims[ "https://hasura.io/jwt/claims" ];
-						return hasuraClaims ? resolve() : await getClaims( loop + 1 );
-					}, 200 ));
+						if ( !hasuraClaims ) await getClaims( loop + 1, resolve );
+						resolve();
+					}, 100 ));
 				};
 
-				return await getClaims();
+				return getClaims();
 			},
 			signOut: () => {
 				firebaseAuth.signOut();
+				dispatch({ type: "userPurge" });
 				if ( persistor ) persistor.purge();
 			},
 		});
@@ -65,6 +75,7 @@ export default function FirebaseProvider ({ children }) {
 			if ( user ) {
 				const token = await user.getIdToken();
 				dispatch({ type: "auth", token });
+				dispatch({ type: "user", uid: user.uid });
 
 				const idTokenResult = await user.getIdTokenResult();
 				const hasuraClaim = idTokenResult.claims[ "https://hasura.io/jwt/claims" ];
@@ -72,7 +83,10 @@ export default function FirebaseProvider ({ children }) {
 				if ( hasuraClaim ) dispatch({ type: "auth", hasHasuraClaims: true, isAuthenticated: true, isAuthenticating: false });
 				else dispatch({ type: "auth", hasHasuraClaims: false, isAuthenticated: false });
 			}
-			else dispatch({ type: "auth", token: null, isAuthenticating: false, isAuthenticated: false });
+			else {
+				dispatch({ type: "auth", token: null, isAuthenticating: false, isAuthenticated: false });
+				dispatch({ type: "user", uid: "" });
+			}
 		});
 	}, []);
 
@@ -81,8 +95,19 @@ export default function FirebaseProvider ({ children }) {
 			if ( hasHasuraClaims ) dispatch({ type: "auth", isAuthenticated: true, isAuthenticating: false });
 			else setTimeout(() => currentFirebaseUser.getIdToken( true ), 500 );
 		}
-		else dispatch({ type: "auth", isAuthenticated: false, isAuthenticating: false, hasHasuraClaims: false });
+		else {
+			dispatch({ type: "auth", isAuthenticated: false, isAuthenticating: false, hasHasuraClaims: false });
+			dispatch({ type: "user", uid: "" });
+		}
 	}, [ token, hasHasuraClaims ]);
+
+	const userState = _.get( state, "user" );
+	const { data } = useQuery( GET_USER, { variables: { uid: userState.uid }, skip: !userState.uid || !token, fetchPolicy: "cache-and-network" });
+	const user = _.omit( _.get( data, "users[0]" ), "__typename" );
+
+	useEffect(() => {
+		if ( userState.uid && !_.isEmpty( user ) && !_.isEqual( userState, user )) dispatch({ type: "user", ...user });
+	}, [ userState, user ]);
 
 	return (
 		<>

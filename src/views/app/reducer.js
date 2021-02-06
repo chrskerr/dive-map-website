@@ -1,6 +1,8 @@
 
 import _ from "lodash";
 
+import initialState from "./initial-state";
+
 export default ( state, action ) => {
 	const { type, ...payload } = action;
 
@@ -19,6 +21,21 @@ export default ( state, action ) => {
 			ui: {
 				..._.get( state, "ui" ), 
 				...payload,
+			},
+		};
+	case "user":
+		return {
+			...state,
+			user: {
+				..._.get( state, "user" ), 
+				...payload,
+			},
+		};
+	case "userPurge":
+		return {
+			...state,
+			user: {
+				..._.get( initialState, "user" ), 
 			},
 		};
 	default: 

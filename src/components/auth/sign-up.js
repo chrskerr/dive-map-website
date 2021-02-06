@@ -67,8 +67,7 @@ export default function SignUp ({ closeModal }) {
 		validationSchema: validationSchema,
 		onSubmit: async ( values, { setFieldError }) => {
 			try {
-				const res = await createAccount( _.get( values, "username" ), _.get( values, "password" ));
-				console.log( "res", res );
+				await createAccount( _.get( values, "username" ), _.get( values, "password" ));
 				if ( closeModal ) closeModal();
 			} catch ( error ) {
 				const code = _.get( error, "code" );

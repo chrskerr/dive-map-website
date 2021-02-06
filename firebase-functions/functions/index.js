@@ -16,12 +16,9 @@ const API_HOST = "https://dev-divemap.hasura.app/v1/graphql";
 const HASURA_GRAPHQL_ADMIN_SECRET = functions.config().hasura.adminsecret;
 
 const CREATE_USER = `
-	mutation( $object: [users_insert_input!]! ) {
-		insert_users (
-			objects: $object, 
-			on_conflict: { constraint: users_pkey, update_columns: uid }
-		) {
-			affected_rows
+	mutation( $object: users_insert_input! ) {
+		insert_users_one( object: $object ) {
+			id
 		}
 	}
 `;
@@ -41,15 +38,17 @@ async function doQuery( query, variables ) {
 exports.processSignUp = functions.auth.user().onCreate( async user => {
 	const { uid, email } = user;
 
-	await doQuery( CREATE_USER, { object: { uid, email, username: email }});
+	const res = await doQuery( CREATE_USER, { object: { uid, email, username: email }});
+	const id = _.get( res, "data.insert_users_one.id" );
+
 	await admin.auth().setCustomUserClaims( uid, {
 		"https://hasura.io/jwt/claims": {
 			"x-hasura-default-role": "user",
 			"x-hasura-allowed-roles": [ "user" ],
-			"x-hasura-user-id": uid,
+			"x-hasura-user-id": id,
 		},
 	});
-	return `Created user: ${ uid }`;
+	return `Created user: ${ id }`;
 });
 
 
