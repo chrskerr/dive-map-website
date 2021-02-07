@@ -1,10 +1,11 @@
 
 // Packages
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import PropTypes from "prop-types";
 import _ from "lodash";
 import { Paper, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
+import { useHistory } from "react-router-dom";
 import { MapContainer, TileLayer, MapConsumer, Marker, Tooltip, Polygon, Polyline } from "react-leaflet";
 import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
 import L from "leaflet";
@@ -14,8 +15,8 @@ import greenIcon from "./leaflet-icon/marker-icon-2x-green-#2AAD27.png";
 import violetIcon from "./leaflet-icon/marker-icon-2x-violet-#9C2BCB.png";
 import shadow from "./leaflet-icon/marker-shadow.png";
 
-
 // App
+import { State } from "../";
 
 const useStyles = makeStyles( theme => ({
 	map: {
@@ -46,9 +47,11 @@ const useStyles = makeStyles( theme => ({
 }));
 
 
-export default function Map ({ allDives, reducerBag }) {
+export default function Map ({ allDives }) {
 	const classes = useStyles();
-	const [ state, dispatch ] = reducerBag;	
+	const [ state, dispatch ] = useContext( State );	
+	const history = useHistory();
+	
 	const [ isZooming, setIsZooming ] = useState( false );
 
 	// Location search
@@ -59,8 +62,8 @@ export default function Map ({ allDives, reducerBag }) {
 	}));
 
 	// Edit
-	const isAddEditActive = _.get( state, "addEdit.isActive" );
-	const isAddEditRequesting = _.get( state, "addEdit.isRequesting" );
+	const isEditing = _.get( state, "explore.dive.isEditing" );
+	const isRequesting = _.isFunction( _.get( state, "explore.dive.requestFunc" ));
 
 	// Dive markers
 	const iconProps = {
@@ -81,8 +84,8 @@ export default function Map ({ allDives, reducerBag }) {
 			...iconProps,
 		}),
 	});
-	const diveMarkers = isAddEditActive ? _.get( state, "addEdit.coords" ) : _.get( state, "currentDive.coords" );
-	const diveType = isAddEditActive ? _.get( state, "addEdit.diveType" ) : _.get( state, "currentDive.type" );
+	const diveMarkers = _.get( state, "explore.dive.coords" );
+	const diveType = _.get( state, "explore.dive.type" );
 	const journeyLatLngs = _.get( diveMarkers, "journey" );
 	const mainLatLngs = _.get( diveMarkers, "main" );
 	const markerPositionType = _.get( state,  "map.markerPositionType" );
@@ -139,31 +142,30 @@ export default function Map ({ allDives, reducerBag }) {
 						setTimeout(() => map.invalidateSize(), 50 );
 					}, []);
 
-
-
 					useEffect(() => {
-						if ( !_.isEmpty( mainLatLngs ) && !isAddEditActive ) { 
+						if ( !_.isEmpty( mainLatLngs ) && !isEditing ) { 
 							map.flyTo( _.head( mainLatLngs ), 14 );
 						}
-					}, [ mainLatLngs, isAddEditActive ]);
+					}, [ mainLatLngs, isEditing ]);
 
 					useEffect(() => {
-						if ( isAddEditRequesting ) map.on( "dblclick", ({ latlng }) => dispatch({ type: "addEdit.supplyMarker", latlng }));
+						if ( isRequesting ) map.on( "dblclick", ({ latlng }) => dispatch({ type: "addEdit.supplyMarker", latlng }));
 						else map.off( "dblclick" );
-					}, [ isAddEditRequesting ]);
+					}, [ isRequesting ]);
 	
 					return <>
 						<TileLayer
 							attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
 							url='https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
 						/> 
-						{ ( !_.isEmpty( allDives ) && !isAddEditActive ) && _.map( allDives, dive => {
+						{ ( !_.isEmpty( allDives ) && !isEditing ) && _.map( allDives, dive => {
 							const lat = _.get( dive, `coords.${ markerPositionType }[0].lat` ) || _.get( dive, "coords.main[0].lat" );
 							const lng = _.get( dive, `coords.${ markerPositionType }[0].lng` ) || _.get( dive, "coords.main[0].lng" );
 							if ( !lat || !lng ) return null;
+							const id = _.get( dive, "id" );
 
 							return (
-								<Marker position={[ lat, lng ]} key={ _.get( dive, "id" ) }>
+								<Marker position={[ lat, lng ]} key={ id } eventHandlers={{ click: () => history.push( `/explore/${ id }` ) }}>
 									<Tooltip>{ _.get( dive, "name" ) }</Tooltip>
 								</Marker>
 							);
@@ -176,9 +178,9 @@ export default function Map ({ allDives, reducerBag }) {
 									<Marker 
 										key={ index } 
 										position={[ lat, lng ]}
-										draggable={ isAddEditActive }
+										draggable={ isEditing }
 										icon={ icons.violet }
-										eventHandlers={ isAddEditActive ? {
+										eventHandlers={ isEditing ? {
 											dragend: e => {
 												const { lat, lng } = _.get( e, "target._latlng" );
 												dispatch({ type: "addEdit.editCoord", coordType: "journey", index, latLng: { lat, lng }});
@@ -200,9 +202,9 @@ export default function Map ({ allDives, reducerBag }) {
 									<Marker 
 										key={ index } 
 										position={ [ lat, lng ] }
-										draggable={ isAddEditActive }
+										draggable={ isEditing }
 										icon={ icons.green }
-										eventHandlers={ isAddEditActive ? {
+										eventHandlers={ isEditing ? {
 											dragend: e => {
 												const { lat, lng } = _.get( e, "target._latlng" );
 												dispatch({ type: "addEdit.editCoord", coordType: "main", index, latLng: { lat, lng }});

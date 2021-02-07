@@ -28,4 +28,25 @@ export default {
 		username: "",
 		email: "",
 	},
+	explore: {
+		view: "viewAll",
+		dive: {
+			isEditing: false,
+			requestFunc: null,
+			id: "",
+			depth: 0,
+			name: "", 
+			type: "",
+			description: "", 
+			coords: {}, 
+			dive_plan: "", 
+			created_at: "", 
+			updated_at: "",
+		},
+		map: {
+			bounds: {},
+			map: null,
+			markerPositionType: "main",
+		},
+	},
 };

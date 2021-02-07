@@ -1,16 +1,17 @@
 
 // Packages
-import React, { useContext } from "react";
+import React from "react";
 import { BrowserRouter, Switch, Route } from "react-router-dom";
 import _ from "lodash";
 import { makeStyles } from "@material-ui/core/styles";
 
 // App
-import { TopNav, BottomNav } from "../../components";
-import { State, Explore, Home, Account } from "../index";
+import { TopNav } from "../../components" ;
+import { Home, Account } from "../index";
+const Explore = React.lazy(() => import( "../explore/index" ));
 
 const NotFound = () => <h1>404</h1>;
-const AR = () => <h1>AR</h1>;
+const AR = () => <h1>AR</h1>; // lazy load this one too
 
 const useStyles = makeStyles({
 	root: {
@@ -20,8 +21,6 @@ const useStyles = makeStyles({
 });
 
 export default function Router () {
-	const [ state ] = useContext( State );
-	const isSmall = _.get( state, "ui.isSmall" );
 	const classes = useStyles();
 
 	const routesMap = {
@@ -32,7 +31,7 @@ export default function Router () {
 		},
 	
 		map: {
-			path: "/explore/:dive?",
+			path: "/explore/:dive?/:action?",
 			component: Explore,
 		},
 	
@@ -55,13 +54,14 @@ export default function Router () {
 
 	return (
 		<BrowserRouter>
-			{ !isSmall && <TopNav /> }
+			<TopNav />
 			<div className={ classes.root }>
-				<Switch>
-					{ _.map( routesMap, ( props, key ) => <Route key={ key } { ...props } /> )}
-				</Switch>
+				<React.Suspense fallback={ <></> }>
+					<Switch>
+						{ _.map( routesMap, ( props, key ) => <Route key={ key } { ...props } /> )}
+					</Switch>
+				</React.Suspense>
 			</div>
-			{ isSmall && <BottomNav /> }
 		</BrowserRouter>
 	);
 }

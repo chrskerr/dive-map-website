@@ -1,7 +1,6 @@
 
 // Packages
 import React, { useEffect, useContext } from "react";
-import PropTypes from "prop-types";
 import { TextField, Button, Grid, Typography, Select, MenuItem, FormControl, InputLabel } from "@material-ui/core";
 import { ChevronRightRounded, AutorenewRounded, AddRounded } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
@@ -9,6 +8,7 @@ import { useFormik } from "formik";
 import * as yup from "yup";
 import _ from "lodash";
 import { gql, useMutation } from "@apollo/client";
+import { useHistory, useParams } from "react-router-dom";
 
 // App
 import { State } from "../";
@@ -67,18 +67,21 @@ const INSERT_DIVE = gql`
 	}
 `;
 
-export default function AddEdit ({ reducerBag, editing = false }) {
+export default function AddEdit () {
 	const classes = useStyles();
+	const history = useHistory();
+	const { id: diveId } = useParams();
+
+	const isEditing = diveId !== "add";
 	
-	const [ appState ] = useContext( State );
-	const { isAuthenticated } = _.get( appState, "auth" );
-	const { id } = _.get( appState, "user" );
+	const [ state, dispatch ] = useContext( State );
+	const { isAuthenticated } = _.get( state, "auth" );
+	const { id } = _.get( state, "user" );
 
 	const [ insertDive ] = useMutation( INSERT_DIVE, { refetchQueries: [ "GetAllDives" ], awaitRefetchQueries: true }); 
 
-	const [ state, dispatch ] = reducerBag;
-	const coords = _.get( state, "addEdit.coords" );
-	const savedDiveType = _.get( state, "addEdit.diveType" );
+	const coords = _.get( state, "explore.dive.coords" );
+	const savedDiveType = _.get( state, "explore.dive.diveType" );
 
 	const mainCoords = _.get( coords, "main" );
 
@@ -103,7 +106,8 @@ export default function AddEdit ({ reducerBag, editing = false }) {
 					},
 				}});
 
-				dispatch({ type: "lgView.viewAll" });
+				if ( isEditing ) history.push( `/explore/${ diveId }` );
+				else history.push( "/explore" );
 			} catch ( error ) {
 				console.error( error );
 				const code = _.get( error, "code" );
@@ -112,11 +116,9 @@ export default function AddEdit ({ reducerBag, editing = false }) {
 			}
 		},
 	});
-
-	console.log( editing );
 	
 	useEffect(() => {
-		if ( !_.isEqual( formik.values.type, savedDiveType )) dispatch({ type: "addEdit.updateDiveType", diveType: formik.values.type });
+		if ( !_.isEqual( formik.values.type, savedDiveType )) dispatch({ type: "explore.updateDive", dive: { type: formik.values.type }});
 	}, [ formik.values.type, savedDiveType ]);
 	
 	if ( !id || !isAuthenticated ) return <p>You must be logged in to add a dive.</p>;
@@ -215,7 +217,7 @@ export default function AddEdit ({ reducerBag, editing = false }) {
 			{/* Add Marker Buttons */}
 			<Grid container spacing={ 1 }>
 				{ _.map([ "journey", "main" ], type => {
-					const coords = _.get( state, `addEdit.coords.${ type }` );
+					const coords = _.get( state, `explore.dive.coords.${ type }` );
 					return( 
 						<Grid item xs={ 6 } key={ type }>
 							<Grid container spacing={ 1 } className={ classes.gridContainer }>
@@ -228,7 +230,7 @@ export default function AddEdit ({ reducerBag, editing = false }) {
 											const func = ({ lat, lng }) => dispatch({ type: "addEdit.updateCoords", coordType: type, latLng: { lat, lng }});
 											dispatch({ type: "addEdit.requestMarker", func });
 										}}
-										disabled={ state.addEdit.isRequesting }
+										disabled={ _.isFunction( _.get( state, "explore.dive.requestFunc" )) }
 									>
 										{ type === "main" && <>{ formik.values.type === "area" ? "Add a new boundary marker" : "Add a new route marker" }</> }
 										{ type === "journey" && "Add a new journey waypoint" }
@@ -270,14 +272,11 @@ export default function AddEdit ({ reducerBag, editing = false }) {
 				<Grid item xs={ 4 }>
 					<Button fullWidth variant='contained' size="small" color="secondary" onClick={ () => { 
 						formik.resetForm();
-						dispatch({ type: "lgView.viewAll" });
+						if ( isEditing ) history.push( `/explore/${ diveId }` );
+						else history.push( "/explore" );
 					}}>Cancel</Button>
 				</Grid>
 			</Grid>
 		</form>
 	);
 }
-AddEdit.propTypes = {
-	reducerBag: PropTypes.array,
-	editing: PropTypes.bool,
-};

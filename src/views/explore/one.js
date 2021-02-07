@@ -1,6 +1,6 @@
 
 // Packages
-import React from "react";
+import React, { useContext } from "react";
 import PropTypes from "prop-types";
 import _ from "lodash";
 import { Grid, Typography, Button } from "@material-ui/core";
@@ -10,6 +10,7 @@ import { parseISO, format } from "date-fns";
 import { useHistory } from "react-router-dom";
 
 // App
+import { State } from "../";
 
 const useStyles = makeStyles({
 	title: {
@@ -23,11 +24,11 @@ const useStyles = makeStyles({
 	},
 });
 
-export default function One ({ reducerBag }) {
+export default function One () {
 	const classes = useStyles();
 	const history = useHistory();
-	const [ state ] = reducerBag;
-	const diveData = _.get( state, "currentDive" );
+	const [ state ] = useContext( State );
+	const diveData = _.get( state, "explore.dive" );
 
 	return (
 		<Grid container spacing={ 3 }>
