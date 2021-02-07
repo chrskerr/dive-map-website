@@ -1,8 +1,9 @@
 
 // Packages
-import React, { useContext, useReducer } from "react";
+import React, { useContext, useReducer, useEffect } from "react";
 import _ from "lodash";
 import { gql, useQuery } from "@apollo/client";
+import { useParams } from "react-router-dom";
 
 // App
 import { State } from "../";
@@ -19,15 +20,44 @@ const GET_DIVES = gql`
 	}
 `;
 
+const GET_DIVE = gql`
+	query( $id: String! ) {
+		dives_by_pk( id: $id ) {
+			id name type description depth
+			coords dive_plan created_at updated_at
+		}
+	}
+`;
+
 export default function Explore () {
 	const [ state ] = useContext( State );
 	const isSmall = _.get( state, "ui.isSmall" );
+	const { dive } = useParams();
+	
 	const reducerBag = useReducer( reducer, initialState );
+	const [ exploreState, exploreDispatch ] = reducerBag;
 
-	const { data } = useQuery( GET_DIVES );
-	const dives = _.get( data, "dives" );
+	const { data: allDivesData } = useQuery( GET_DIVES );
+	const dives = _.get( allDivesData, "dives" );
 
-	return isSmall ? <ExploreSmall reducerBag={ reducerBag } dives={ dives } /> : <ExploreLarge reducerBag={ reducerBag } dives={ dives } />;
+	const { bounds, markerPositionType } = _.get( exploreState, "map" );
+	const filteredDiveSites = _.filter( dives, dive => {
+		const lat = _.get( dive, `coords.${ markerPositionType }[0].lat` ) || _.get( dive, "coords.main[0].lat" );
+		const lng = _.get( dive, `coords.${ markerPositionType }[0].lng` ) || _.get( dive, "coords.main[0].lng" );
+		
+		if ( !lat || !lng ) return false;
+		else return lat > bounds.lat0 && lat < bounds.lat1 && lng > bounds.lng0 && lng < bounds.lng1;
+	});
+
+	const { data: oneDiveData } = useQuery( GET_DIVE, { variables: { id: dive }, skip: !dive });
+	const diveData = _.omit( _.get( oneDiveData, "dives_by_pk" ), "__typename" );
+	const currentDive = _.get( exploreState, "currentDive" );
+
+	useEffect(() => {
+		if ( !_.isEmpty( diveData ) && !_.isEqual( diveData, currentDive )) exploreDispatch({ type: "currentDive.update", currentDive: diveData });
+	}, [ diveData ]);
+
+	return isSmall ? <ExploreSmall reducerBag={ reducerBag } dives={ filteredDiveSites } /> : <ExploreLarge reducerBag={ reducerBag } dives={ filteredDiveSites } />;
 }
 
 const reducer = ( state, action ) => {
@@ -129,6 +159,7 @@ const reducer = ( state, action ) => {
 				isAdding: false,
 			},
 			addEdit: { ...initialState.addEdit },
+			currentDive: { ...initialState.currentDive },
 		};
 	case "lgView.add":
 		return {
@@ -179,6 +210,7 @@ const reducer = ( state, action ) => {
 				...addEdit,
 				isActive: true,
 			},
+			currentDive: { ...initialState.currentDive },
 		};
 
 	// Map
@@ -188,7 +220,24 @@ const reducer = ( state, action ) => {
 			map: {
 				...map,
 				bounds: _.get( action, "bounds" ),
+				map: _.get( action, "map" ),
 			},
+		};
+	case "map.setMarkerPositionType":
+		if ( _.get( action, "markerPositionType" ) !== "main" && _.get( action, "markerPositionType" ) !== "journey" ) return { ...state };
+		return {
+			...state,
+			map: {
+				...map,
+				markerPositionType: _.get( action, "markerPositionType" ),
+			},
+		};
+
+	// Current Dive
+	case "currentDive.update":
+		return {
+			...state,
+			currentDive: _.get( action, "currentDive" ),
 		};
 
 	// Default
@@ -212,7 +261,20 @@ const initialState = {
 		isActive: false,
 		func: () => {},
 	},
+	currentDive: {
+		id: "",
+		depth: 0,
+		name: "", 
+		type: "",
+		description: "", 
+		coords: {}, 
+		dive_plan: "", 
+		created_at: "", 
+		updated_at: "",
+	},
 	map: {
 		bounds: {},
+		map: null,
+		markerPositionType: "main",
 	},
 };

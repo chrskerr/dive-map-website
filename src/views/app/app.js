@@ -17,8 +17,8 @@ import Theme from "./theme";
 
 const useStyles = makeStyles({
 	root: {
-		maxWidth: "100vw", maxHeight: "100vh",
-		width: "100vw", height: "100vh",
+		maxWidth: "100vw", maxHeight: ({ viewHeight }) => viewHeight,
+		width: "100vw", height: ({ viewHeight }) => viewHeight,
 		display: "flex", flexDirection: "column",
 	},
 });
@@ -28,8 +28,8 @@ export const State = createContext();
 export const App = () => {
 	const [ state, dispatch ] = useReducer( reducer, initialState );
 	const { token, client, isAuthenticated } = _.get( state, "auth" );
-	const breakpoint = _.get( state, "ui.breakpoint" );
-	const classes = useStyles();
+	const { breakpoint, viewHeight } = _.get( state, "ui" );
+	const classes = useStyles({ viewHeight });
 
 	useEffect(() => {
 		( async () => {
@@ -51,8 +51,9 @@ export const App = () => {
 		})();
 	}, [ token, isAuthenticated ]);
 
-	const _setBreakpoint = () => {
+	const _setBreakpoint = _.debounce(() => {
 		const innerWidth = _.get( window, "innerWidth" );
+		const newViewHeight = _.get( window, "innerHeight" );
 		let newBreakpoint, isSmall;
 
 		if ( innerWidth >= 1920 ) newBreakpoint = "xl", isSmall = false;
@@ -61,15 +62,15 @@ export const App = () => {
 		else if ( innerWidth >= 600 ) newBreakpoint = "sm", isSmall = true;
 		else newBreakpoint = "xs", isSmall = true;
 
-		if ( breakpoint !== newBreakpoint ) dispatch({ type: "ui", breakpoint: newBreakpoint, isSmall });
-	};
+		if ( breakpoint !== newBreakpoint || viewHeight !== newViewHeight ) dispatch({ type: "ui", breakpoint: newBreakpoint, isSmall, viewHeight: newViewHeight });
+	}, 100 );
 
 	useEffect(() => {
 		window.addEventListener( "resize", _setBreakpoint );
 	}, []);
 
 	useEffect(() => {
-		if ( !breakpoint ) _setBreakpoint();
+		if ( !breakpoint || !viewHeight ) _setBreakpoint();
 	}, [ breakpoint ]);
 
 		

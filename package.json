@@ -10,11 +10,13 @@
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
     "apollo3-cache-persist": "^0.9.1",
+    "date-fns": "^2.17.0",
     "firebase": "^8.2.5",
     "formik": "^2.2.6",
     "graphql": "^15.5.0",
     "leaflet": "^1.7.1",
     "leaflet-geosearch": "^3.2.1",
+    "leaflet.locatecontrol": "^0.72.2",
     "leaflet.offline": "^2.0.0-beta.4",
     "localforage": "^1.9.0",
     "lodash": "^4.17.20",
@@ -32,10 +34,10 @@
   },
   "scripts": {
     "start": "react-app-rewired start",
-    "build": "react-app-rewired build",
-    "postbuild": "react-snap",
-    "predeploy": "yarn build",
-    "deploy": "gh-pages -d build"
+    "build": "react-scripts build",
+    "postbuild": "  workbox generateSW workbox-config.js",
+    "deploy:live": "yarn build && firebase deploy --only hosting:live",
+    "deploy:staging": "yarn build && firebase deploy --only hosting:staging"
   },
   "eslintConfig": {
     "extends": [

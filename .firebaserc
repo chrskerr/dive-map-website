@@ -1,0 +1,17 @@
+{
+  "projects": {
+    "default": "dive-map-36d7c"
+  },
+  "targets": {
+    "dive-map-36d7c": {
+      "hosting": {
+        "staging": [
+          "staging-jellyfish"
+        ],
+        "live": [
+          "live-jellyfish"
+        ]
+      }
+    }
+  }
+}

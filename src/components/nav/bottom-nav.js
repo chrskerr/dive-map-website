@@ -12,6 +12,7 @@ import { makeStyles } from "@material-ui/core/styles";
 const useStyles = makeStyles({
 	root: {
 		flexGrow: 0,
+		height: "10vh",
 	},
 });
 

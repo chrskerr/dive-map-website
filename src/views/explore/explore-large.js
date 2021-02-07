@@ -2,16 +2,17 @@
 // Packages
 import React, { useEffect } from "react";
 import PropTypes from "prop-types";
-import { useParams } from "react-router-dom";
+import { useParams, useHistory } from "react-router-dom";
 import _ from "lodash";
-import { Button, Paper } from "@material-ui/core";
+import { Button, Paper, Typography } from "@material-ui/core";
 import { AddRounded } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
-import { useSpring, animated as a } from "react-spring";
+import { useSpring, animated as a, config } from "react-spring";
 
 // App
 import Map from "./map";
 import AddEdit from "./add-edit";
+import One from "./one";
 
 const useStyles = makeStyles( theme => ({
 	root: {
@@ -33,6 +34,10 @@ const useStyles = makeStyles( theme => ({
 		marginBottom: theme.spacing( 2 ),
 		"& .MuiPaper-root": {
 			padding: theme.spacing( 1 ),
+			cursor: "pointer",
+			"& .MuiTypography-root": {
+				fontSize: "85%",
+			},
 		},
 	},
 }));
@@ -40,22 +45,34 @@ const useStyles = makeStyles( theme => ({
 export default function ExploreLarge ({ reducerBag, dives }) {
 	const classes = useStyles();
 	const { dive } = useParams();
+	const history = useHistory();
 	
 	const [ state, dispatch ] = reducerBag;
 	const { viewType, viewName, isEditing, isAdding } = _.get( state, "lgView" ) || {};
-	// const bounds = _.get( state, "map.bounds" );
+	const map = _.get( state, "map.map" );
 
-	const mapProps = useSpring( _.get( sizingMap, [ viewType, "map" ]));
-	const listProps = useSpring( _.get( sizingMap, [ viewType, "list" ]));
-	const diveAddProps = useSpring( _.get( sizingMap, [ viewType, "diveAdd" ]));
-	const historyEditProps = useSpring( _.get( sizingMap, [ viewType, "historyEdit" ]));
+	const mapProps = useSpring({ 
+		..._.get( sizingMap, [ viewType, "map" ]),
+		onFrame: map ? _.throttle(() => map.invalidateSize(), 20 ) : () => {},
+		config: config.default,
+	});
+	const listProps = useSpring({ 
+		..._.get( sizingMap, [ viewType, "list" ]),
+		config: config.default,
+	});
+	const diveAddProps = useSpring({ 
+		..._.get( sizingMap, [ viewType, "diveAdd" ]),
+		config: config.default,
+	});
+	const historyEditProps = useSpring({ 
+		..._.get( sizingMap, [ viewType, "historyEdit" ]),
+		config: config.default,
+	});
 
 	useEffect(() => {
 		if ( !dive && viewName !== "viewAll" && viewName !== "add" ) dispatch({ type: "lgView.viewAll" });
 		if ( dive && viewName === "viewAll" ) dispatch({ type: "lgView.viewOne" });
 	}, [ dive, viewName ]);
-
-	const filteredDiveSites = dives;
 
 	return ( <>
 		<div className={ classes.root }>
@@ -65,13 +82,20 @@ export default function ExploreLarge ({ reducerBag, dives }) {
 			<a.div className={ classes.container } style={ listProps }>
 				<div className={ classes.content }>
 					<div className={ classes.listItem }>
-						<Button variant='outlined' size="small" disabled={ viewName === "add" } fullWidth endIcon={ <AddRounded /> } onClick={ () => dispatch({ type: "lgView.add" })}>Add a New Dive</Button>
+						<Button variant='outlined' size="small" disabled={ viewName === "add" } fullWidth endIcon={ <AddRounded /> } onClick={ () => {
+							dispatch({ type: "lgView.add" });
+							history.push( "/explore" );
+						}}>Add a New Dive</Button>
 					</div>
-					{ !_.isEmpty( filteredDiveSites ) && _.map( filteredDiveSites, site => {
-						const { id, name } = site;
+					{ !_.isEmpty( dives ) && _.map( dives, site => {
+						const { id, name, depth } = site;
 						return <div className={ classes.listItem } key={ id }>
-							<Paper>
-								<p>{ name }</p>
+							<Paper onClick={ () => {
+								history.push( `/explore/${ id }` );
+								dispatch({ type: "lgView.viewOne" });
+							}}>
+								<Typography>{ name }</Typography>
+								<Typography>Depth: { depth } metres</Typography>
 							</Paper>
 						</div>;
 					})}
@@ -84,6 +108,7 @@ export default function ExploreLarge ({ reducerBag, dives }) {
 					</div>
 					:
 					<div className={ classes.content }>
+						<One reducerBag={ reducerBag } />
 					</div> 
 				}
 			</a.div>
@@ -106,14 +131,14 @@ const sizingMap = {
 		historyEdit: { left: "100%", right: "0%", opacity: 0 },
 	},
 	viewOne: {
-		map: { left: "0%", right: "60%", opacity: 1 },
-		list: { left: "40%", right: "40%", opacity: 1 },
+		map: { left: "0%", right: "40%", opacity: 1 },
+		list: { left: "40%", right: "60%", opacity: 0 },
 		diveAdd: { left: "60%", right: "0%", opacity: 1 },
 		historyEdit: { left: "100%", right: "0%", opacity: 0 },
 	},
 	viewHistoryEdit: {
 		map: { left: "0%", right: "70%", opacity: 1 },
-		list: { left: "0%", right: "100%", opacity: 0 },
+		list: { left: "30%", right: "70%", opacity: 0 },
 		diveAdd: { left: "30%", right: "50%", opacity: 1 },
 		historyEdit: { left: "50%", right: "0%", opacity: 1 },
 	},

@@ -14,6 +14,7 @@ export default {
 	ui: {
 		breakpoint: null,
 		isSmall: false,
+		viewHeight: 0,
 		deviceType: {
 			isDesktop: false,
 			isMobile: false,
