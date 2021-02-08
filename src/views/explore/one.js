@@ -30,6 +30,8 @@ export default function One () {
 	const [ state ] = useContext( State );
 	const diveData = _.get( state, "explore.dive" );
 
+	if ( !_.get( diveData, "id" )) return null;
+
 	return (
 		<Grid container spacing={ 3 }>
 			<Grid item xs={ 6 }>

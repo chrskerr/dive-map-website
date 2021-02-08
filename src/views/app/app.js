@@ -67,6 +67,7 @@ export const App = () => {
 
 	useEffect(() => {
 		window.addEventListener( "resize", _setBreakpoint );
+		return () => window.removeEventListener( "resize" );
 	}, []);
 
 	useEffect(() => {

@@ -53,7 +53,7 @@ export default function Index () {
 		}
 	}, [ dive, action, view ]);
 
-	const { data: allDivesData } = useQuery( GET_DIVES );
+	const { data: allDivesData } = useQuery( GET_DIVES, { fetchPolicy: "cache-and-network" });
 	const dives = _.get( allDivesData, "dives" );
 
 	const { bounds, markerPositionType } = _.get( state, "explore.map" );

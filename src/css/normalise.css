@@ -21,8 +21,13 @@
    */
   
   body {
-	margin: 0;
-	overflow: hidden;
+		margin: 0;
+		overflow: hidden;
+		background: #035AA6;
+  }
+
+  #app {
+		background-color: #fff;
   }
   
   /**
