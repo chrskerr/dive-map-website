@@ -5,17 +5,16 @@ import PropTypes from "prop-types";
 import _ from "lodash";
 import { makeStyles } from "@material-ui/core/styles";
 import { useHistory } from "react-router-dom";
+// import L from "leaflet";
 import { MapContainer, TileLayer, MapConsumer, ScaleControl, Marker, Tooltip, Polygon, Polyline } from "react-leaflet";
 import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
-import L from "leaflet";
-// import "leaflet.offline";
-import "leaflet.locatecontrol";
+// import { CachedTileLayer } from "@yaga/leaflet-cached-tile-layer";
+import DivIcon from "leaflet-svgicon";
+// import "leaflet.locatecontrol";
+import "../../../node_modules/leaflet/dist/leaflet.css";
 import "../../../node_modules/leaflet-geosearch/dist/geosearch.css";
-import "../../../node_modules/leaflet.locatecontrol/dist/L.Control.Locate.min.css";
+// import "../../../node_modules/leaflet.locatecontrol/dist/L.Control.Locate.min.css";
 import "../../css/icomoon-fa-v1.0/style.css";
-import greenIcon from "./leaflet-icon/marker-icon-2x-green-#2AAD27.png";
-import violetIcon from "./leaflet-icon/marker-icon-2x-violet-#9C2BCB.png";
-import shadow from "./leaflet-icon/marker-shadow.png";
 
 // App
 import { State } from "../";
@@ -48,24 +47,6 @@ export default function Map ({ allDives }) {
 	const isRequesting = _.isFunction( _.get( state, "explore.map.requestFunc" ));
 
 	// Dive markers
-	const iconProps = {
-		iconSize: [ 25, 41 ],
-		iconAnchor: [ 12, 41 ],
-		popupAnchor: [ 1, -34 ],
-		shadowSize: [ 41, 41 ],
-	};
-	const [ icons ] = useState({
-		green: new L.Icon({
-			iconUrl: greenIcon,
-			shadowUrl: shadow,
-			...iconProps,
-		}),
-		violet: new L.Icon({
-			iconUrl: violetIcon,
-			shadowUrl: shadow,
-			...iconProps,
-		}),
-	});
 	const diveMarkers = _.get( state, "explore.dive.coords" );
 	const diveType = _.get( state, "explore.dive.type" );
 	const journeyLatLngs = _.get( diveMarkers, "journey" );
@@ -96,6 +77,12 @@ export default function Map ({ allDives }) {
 					}, [ bounds ]);
 	
 					useEffect(() => { 
+						// new CachedTileLayer( "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+						// 	attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors &copy; <a href=\"https://carto.com/attributions\">CARTO</a>",
+						// 	databaseName: "tile-cache-data",
+						// 	maxAge: 1000 * 60 * 60 * 24 * 7,
+						// }).addTo( map );
+
 						map.on( "zoomend", () => {
 							dispatch({ type: "map.stopFlying" });
 							updateBounds();
@@ -103,14 +90,14 @@ export default function Map ({ allDives }) {
 						map.on( "moveend", () => updateBounds());
 						map.on( "resize", () => updateBounds());
 						map.addControl( searchProvider );
-						map.addControl( L.control.locate({
-							setView: "once",
-							flyTo: true,
-							locateOptions: {
-								enableHighAccuracy: true,
-								watch: true,
-							},
-						}));
+						// map.addControl( L.control.locate({
+						// 	setView: "once",
+						// 	flyTo: true,
+						// 	locateOptions: {
+						// 		enableHighAccuracy: true,
+						// 		watch: true,
+						// 	},
+						// }));
 
 						setTimeout(() => map.invalidateSize(), 50 );
 					}, []);
@@ -133,7 +120,11 @@ export default function Map ({ allDives }) {
 							const id = _.get( dive, "id" );
 
 							return (
-								<Marker position={[ lat, lng ]} key={ id } eventHandlers={{ dblclick: () => history.push( `/explore/${ id }` ) }}>
+								<Marker 
+									position={[ lat, lng ]} key={ id } 
+									icon={ new DivIcon.SVGIcon({ color: "#035AA6" })}
+									eventHandlers={{ dblclick: () => history.push( `/explore/${ id }` ) }}
+								>
 									<Tooltip>{ _.get( dive, "name" ) }</Tooltip>
 								</Marker>
 							);
@@ -147,7 +138,7 @@ export default function Map ({ allDives }) {
 										key={ index } 
 										position={[ lat, lng ]}
 										draggable={ isEditing }
-										icon={ icons.violet }
+										icon={ new DivIcon.SVGIcon({ color: "#9C2BCB" }) }
 										eventHandlers={ isEditing ? {
 											drag: e => _.throttle(() => {
 												const { lat, lng } = _.get( e, "target._latlng" );
@@ -172,7 +163,7 @@ export default function Map ({ allDives }) {
 										key={ index } 
 										position={ [ lat, lng ] }
 										draggable={ isEditing }
-										icon={ icons.green }
+										icon={ new DivIcon.SVGIcon({ color: "#2AAD27" }) }
 										eventHandlers={ isEditing ? {
 											drag: e => _.throttle(() => {
 												const { lat, lng } = _.get( e, "target._latlng" );
