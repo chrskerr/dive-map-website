@@ -33,7 +33,6 @@ export default function Map ({ allDives }) {
 	const [ state, dispatch ] = useContext( State );	
 	const history = useHistory();
 	
-	const [ isZooming, setIsZooming ] = useState( false );
 	const isSmall = _.get( state, "ui.isSmall" );
 
 	// Location search
@@ -44,8 +43,9 @@ export default function Map ({ allDives }) {
 	}));
 
 	// Edit
-	const isEditing = _.get( state, "explore.dive.isEditing" );
-	const isRequesting = _.isFunction( _.get( state, "explore.dive.requestFunc" ));
+	const view = _.get( state, "explore.view" );
+	const isEditing = view === "add" || view === "edit";
+	const isRequesting = _.isFunction( _.get( state, "explore.map.requestFunc" ));
 
 	// Dive markers
 	const iconProps = {
@@ -71,6 +71,7 @@ export default function Map ({ allDives }) {
 	const journeyLatLngs = _.get( diveMarkers, "journey" );
 	const mainLatLngs = _.get( diveMarkers, "main" );
 	const markerPositionType = _.get( state,  "explore.map.markerPositionType" );
+	const isFlying = _.get( state, "explore.map.isFlying" );
 
 	return (
 		<MapContainer className={ classes.map } center={ isSmall ? [ 24, 15 ] : [ 15, 15 ] } zoom={ isSmall ? 0.75 : 1.75 }>
@@ -95,9 +96,8 @@ export default function Map ({ allDives }) {
 					}, [ bounds ]);
 	
 					useEffect(() => { 
-						map.on( "zoomstart", () => setIsZooming( true ));
 						map.on( "zoomend", () => {
-							setIsZooming( false );
+							dispatch({ type: "map.stopFlying" });
 							updateBounds();
 						});
 						map.on( "moveend", () => updateBounds());
@@ -116,12 +116,6 @@ export default function Map ({ allDives }) {
 					}, []);
 
 					useEffect(() => {
-						if ( !_.isEmpty( mainLatLngs ) && !isEditing ) { 
-							map.flyTo( _.head( mainLatLngs ), 14 );
-						}
-					}, [ mainLatLngs, isEditing ]);
-
-					useEffect(() => {
 						if ( isRequesting ) map.on( "dblclick", ({ latlng }) => dispatch({ type: "addEdit.supplyMarker", latlng }));
 						else map.off( "dblclick" );
 					}, [ isRequesting ]);
@@ -132,19 +126,19 @@ export default function Map ({ allDives }) {
 							url='https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
 						/> 
 						<ScaleControl />
-						{ ( !_.isEmpty( allDives ) && !isEditing ) && _.map( allDives, dive => {
+						{ ( !_.isEmpty( allDives ) && ( !isEditing || isFlying )) && _.map( allDives, dive => {
 							const lat = _.get( dive, `coords.${ markerPositionType }[0].lat` ) || _.get( dive, "coords.main[0].lat" );
 							const lng = _.get( dive, `coords.${ markerPositionType }[0].lng` ) || _.get( dive, "coords.main[0].lng" );
 							if ( !lat || !lng ) return null;
 							const id = _.get( dive, "id" );
 
 							return (
-								<Marker position={[ lat, lng ]} key={ id } eventHandlers={{ click: () => history.push( `/explore/${ id }` ) }}>
+								<Marker position={[ lat, lng ]} key={ id } eventHandlers={{ dblclick: () => history.push( `/explore/${ id }` ) }}>
 									<Tooltip>{ _.get( dive, "name" ) }</Tooltip>
 								</Marker>
 							);
 						})}
-						{ ( !_.isEmpty( journeyLatLngs ) && !isZooming ) && <>
+						{ ( !_.isEmpty( journeyLatLngs ) && !isFlying ) && <>
 							<Polyline positions={ _.compact( _.concat( journeyLatLngs, _.head( mainLatLngs ))) } color="#9C2BCB" />
 							{ _.map( journeyLatLngs, ( latLngs, index ) => {
 								const { lat, lng } = latLngs; 
@@ -155,10 +149,11 @@ export default function Map ({ allDives }) {
 										draggable={ isEditing }
 										icon={ icons.violet }
 										eventHandlers={ isEditing ? {
-											dragend: e => {
+											drag: e => _.throttle(() => {
 												const { lat, lng } = _.get( e, "target._latlng" );
 												dispatch({ type: "addEdit.editCoord", coordType: "journey", index, latLng: { lat, lng }});
-											},
+											}, 20 )(),
+											dblclick: () => dispatch({ type: "addEdit.deleteCoord", coordType: "journey", index }),
 										} : {}}
 									>
 										<Tooltip>Journey: Marker #{ index + 1 }</Tooltip>
@@ -167,7 +162,7 @@ export default function Map ({ allDives }) {
 							})}
 						</>
 						}
-						{ ( !_.isEmpty( mainLatLngs ) && !isZooming ) && <>
+						{ ( !_.isEmpty( mainLatLngs ) && !isFlying ) && <>
 							{ diveType === "area" && <Polygon positions={ mainLatLngs } color="#2AAD27" /> }
 							{ diveType === "route" && <Polyline positions={ mainLatLngs } color="#2AAD27" /> }
 							{ _.map( mainLatLngs, ( latLngs, index ) => {
@@ -179,13 +174,20 @@ export default function Map ({ allDives }) {
 										draggable={ isEditing }
 										icon={ icons.green }
 										eventHandlers={ isEditing ? {
-											dragend: e => {
+											drag: e => _.throttle(() => {
 												const { lat, lng } = _.get( e, "target._latlng" );
 												dispatch({ type: "addEdit.editCoord", coordType: "main", index, latLng: { lat, lng }});
-											},
+											}, 20 )(),
+											dblclick: () => dispatch({ type: "addEdit.deleteCoord", coordType: "main", index }),
 										} : {}}
 									>
-										<Tooltip>{ _.startCase( diveType )}: Marker #{ index + 1 }</Tooltip>
+										<Tooltip>
+											<span>{ _.startCase( diveType )}: Marker #{ index + 1 }.</span>
+											{ isEditing && <>
+												<br /><span>Drag me to relocate.</span>
+												<br /><span>Double-click me to delete.</span>
+											</> }
+										</Tooltip>
 									</Marker>
 								);
 							}) }

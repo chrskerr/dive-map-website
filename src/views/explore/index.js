@@ -32,6 +32,7 @@ export default function Index () {
 	const [ state, dispatch ] = useContext( State );
 	const { dive, action } = useParams();
 	
+	const map = _.get( state, "explore.map.map" );
 	const view = _.get( state, "explore.view" );
 
 	useEffect(() => {
@@ -39,8 +40,7 @@ export default function Index () {
 			if ( view !== "add" ) dispatch({ type: "explore.setView", view: "add" });
 		}
 		else if ( !dive  ) {
-			if ( view !== "viewAll" ) {
-				dispatch({ type: "explore.setView", view: "viewAll" });}
+			if ( view !== "viewAll" ) dispatch({ type: "explore.setView", view: "viewAll" });
 		}
 		else if ( action === "edit" ) {
 			if ( view !== "edit" ) dispatch({ type: "explore.setView", view: "edit" });
@@ -51,7 +51,16 @@ export default function Index () {
 		else if ( dive ) {
 			if ( view !== "viewOne" ) dispatch({ type: "explore.setView", view: "viewOne" });
 		}
+
+		if ( !dive && action ) history.push( "/explore" );
 	}, [ dive, action, view ]);
+
+	useEffect(() => {
+		const latlngs = _.get( state, "explore.dive.coords.main[0]" );
+		if ( map && !_.isEmpty( latlngs ) && view !== "add" && view !== "viewAll" ) { 
+			dispatch({ type: "map.fly", latlngs, zoom: 14 });
+		}
+	}, [ view, map ]);
 
 	const { data: allDivesData } = useQuery( GET_DIVES, { fetchPolicy: "cache-and-network" });
 	const dives = _.get( allDivesData, "dives" );
@@ -66,18 +75,14 @@ export default function Index () {
 	});
 
 	const { data: oneDiveData } = useQuery( GET_DIVE, { variables: { id: dive }, skip: !dive });
-	const diveData = _.get( oneDiveData, "dives_by_pk" );
-	const diveUpdateData = {
-		..._.omit( diveData, "__typename" ),
-		isEditing: false,
-		requestFunc: null,
-	};
+	const diveData = _.omit( _.get( oneDiveData, "dives_by_pk" ), "__typename" );
+
 	const currentDive = _.get( state, "explore.dive" );
-	const isEditing = _.get( currentDive, "isEditing" );
+	const isEditing = view === "add" || view === "edit";
 
 	useEffect(() => {
-		if ( !isEditing && !_.isEmpty( diveData ) && !_.isEqual( diveUpdateData, currentDive )) {
-			dispatch({ type: "explore.updateDive", dive: diveUpdateData });
+		if ( !isEditing && !_.isEmpty( diveData ) && !_.isEqual( diveData, currentDive )) {
+			dispatch({ type: "explore.updateDive", dive: diveData });
 		}
 	}, [ diveData ]);
 

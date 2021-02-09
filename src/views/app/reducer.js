@@ -60,6 +60,11 @@ export default ( state, action ) => {
 					..._.get( state, "explore" ),
 					view: "viewAll",
 					dive: { ..._.get( initialState, "explore.dive" ) },
+					map: {
+						..._.get( state, "explore.map" ),
+						requestFunc: null,
+						requestingMarkerType: false,
+					},
 				},
 			};
 		case "viewOne":
@@ -68,10 +73,10 @@ export default ( state, action ) => {
 				explore: {
 					..._.get( state, "explore" ),
 					view: "viewOne",
-					dive: {
-						..._.get( state, "explore.dive" ),
-						isEditing: false,
+					map: {
+						..._.get( state, "explore.map" ),
 						requestFunc: null,
+						requestingMarkerType: false,
 					},
 				},
 			};
@@ -81,10 +86,10 @@ export default ( state, action ) => {
 				explore: {
 					..._.get( state, "explore" ),
 					view: "history",
-					dive: {
-						..._.get( state, "explore.dive" ),
-						isEditing: false,
+					map: {
+						..._.get( state, "explore.map" ),
 						requestFunc: null,
+						requestingMarkerType: false,
 					},
 				},
 			};
@@ -96,7 +101,6 @@ export default ( state, action ) => {
 					view: "add",
 					dive: {
 						..._.get( state, "explore.dive" ),
-						isEditing: true,
 					},
 				},
 			};
@@ -108,7 +112,6 @@ export default ( state, action ) => {
 					view: "edit",
 					dive: {
 						..._.get( state, "explore.dive" ),
-						isEditing: true,
 					},
 				},
 			};
@@ -140,6 +143,30 @@ export default ( state, action ) => {
 				map: {
 					..._.get( state, "explore.map" ),
 					markerPositionType: _.get( action, "markerPositionType" ),
+				},
+			},
+		};
+	case "map.fly":
+		if ( _.get( state, "explore.map.map" )) _.get( state, "explore.map.map" ).flyTo( _.get( action, "latlngs" ), _.get( action, "zoom" ));
+		return {
+			...state,
+			explore: {
+				..._.get( state, "explore" ),
+				map: {
+					..._.get( state, "explore.map" ),
+					isFlying: true,
+				},
+			},
+		};
+
+	case "map.stopFlying":
+		return {
+			...state,
+			explore: {
+				..._.get( state, "explore" ),
+				map: {
+					..._.get( state, "explore.map" ),
+					isFlying: false,
 				},
 			},
 		};
@@ -203,21 +230,23 @@ export default ( state, action ) => {
 			...state,
 			explore: {
 				..._.get( state, "explore" ),
-				dive: {
-					..._.get( state, "explore.dive" ),
+				map: {
+					..._.get( state, "explore.map" ),
 					requestFunc: _.get( action, "func" ),
+					requestingMarkerType: _.get( action, "requestingMarkerType" ),
 				},
 			},
 		};
 	case "addEdit.supplyMarker":
-		state.explore.dive.requestFunc( _.get( action, "latlng" ));
+		state.explore.map.requestFunc( _.get( action, "latlng" ));
 		return {
 			...state,
 			explore: {
 				..._.get( state, "explore" ),
-				dive: {
-					..._.get( state, "explore.dive" ),
+				map: {
+					..._.get( state, "explore.map" ),
 					requestFunc: null,
+					requestingMarkerType: false,
 				},
 			},
 		};

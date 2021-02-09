@@ -31,8 +31,6 @@ export default {
 	explore: {
 		view: "viewAll",
 		dive: {
-			isEditing: false,
-			requestFunc: null,
 			id: "",
 			depth: 0,
 			name: "", 
@@ -47,6 +45,9 @@ export default {
 			bounds: {},
 			map: null,
 			markerPositionType: "main",
+			isFlying: true,
+			requestFunc: null,
+			requestingMarkerType: false,
 		},
 	},
 };
