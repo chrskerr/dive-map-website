@@ -9,9 +9,9 @@ import { makeStyles } from "@material-ui/core/styles";
 import { TopNav } from "../../components" ;
 import { Home, Account } from "../index";
 const Explore = React.lazy(() => import( "../explore/index" ));
+const AR = React.lazy(() => import( "../ar/ar" ));
 
 const NotFound = () => <h1>404</h1>;
-const AR = () => <h1>AR</h1>; // lazy load this one too
 
 const useStyles = makeStyles({
 	root: {

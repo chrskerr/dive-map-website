@@ -3,28 +3,41 @@
 import React, { useEffect, useState, useContext } from "react";
 import PropTypes from "prop-types";
 import _ from "lodash";
+import { IconButton } from "@material-ui/core";
+import { NearMe } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
 import { useHistory } from "react-router-dom";
-// import L from "leaflet";
-import { MapContainer, TileLayer, MapConsumer, ScaleControl, Marker, Tooltip, Polygon, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, MapConsumer, ScaleControl, Marker, Tooltip, Polygon, Polyline, Circle, CircleMarker } from "react-leaflet";
 import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
-// import { CachedTileLayer } from "@yaga/leaflet-cached-tile-layer";
 import DivIcon from "leaflet-svgicon";
-// import "leaflet.locatecontrol";
 import "../../../node_modules/leaflet/dist/leaflet.css";
 import "../../../node_modules/leaflet-geosearch/dist/geosearch.css";
-// import "../../../node_modules/leaflet.locatecontrol/dist/L.Control.Locate.min.css";
 import "../../css/icomoon-fa-v1.0/style.css";
 
 // App
 import { State } from "../";
 
-const useStyles = makeStyles({
+const useStyles = makeStyles( theme => ({
 	map: {
 		height: "100%", width: "100%",
 		minHeight: "100px",
 	},
-});
+	locationControl: {
+		position: "absolute",
+		top: theme.spacing( 1 ),
+		right: theme.spacing( 1 ),
+		zIndex: 1000,
+		backgroundColor: theme.palette.common.white,
+		borderRadius: theme.spacing( 0.5 ),
+		borderStyle: "solid",
+		borderWidth: 1.8,
+		borderColor: theme.palette.grey[ 400 ],
+		padding: theme.spacing( 0.5 ),
+		"& .MuiSvgIcon-root": {
+			fontSize: "90%",
+		},
+	},
+}));
 
 
 export default function Map ({ allDives }) {
@@ -41,6 +54,33 @@ export default function Map ({ allDives }) {
 		style: "bar",
 	}));
 
+	// GEO
+	const [ geoId, setGeoId ] = useState( false );
+	const [ userCoords, setUserCoords ] = useState( false );
+	const [ useGPS, setUseGPS ] = useState( false );
+	useEffect(() => {
+		if ( useGPS && !geoId ) {
+			if ( navigator.geolocation ) {
+				const id = navigator.geolocation.watchPosition(
+					({ coords }) => {
+						if ( !userCoords ) dispatch({ type: "map.fly", latlngs: [ _.get( coords, "latitude" ), _.get( coords, "longitude" ) ], zoom: 14 });
+						if ( !_.isEqual( userCoords, coords )) setUserCoords( coords );
+					}, 
+					() => setGeoId( false ), 
+					{ enableHighAccuracy: true },
+				);
+				setGeoId( id );
+			} 
+			else setUseGPS( false );
+		}
+		if ( !useGPS ) {
+			navigator.geolocation.clearWatch( geoId );
+			setGeoId( false );
+		}
+
+		return () => navigator.geolocation.clearWatch( geoId );
+	}, [ useGPS ]);
+
 	// Edit
 	const view = _.get( state, "explore.view" );
 	const isEditing = view === "add" || view === "edit";
@@ -54,7 +94,12 @@ export default function Map ({ allDives }) {
 	const markerPositionType = _.get( state,  "explore.map.markerPositionType" );
 	const isFlying = _.get( state, "explore.map.isFlying" );
 
-	return (
+	return ( <> 
+		<div className={ classes.locationControl }>
+			<IconButton size="small" onClick={ () => setUseGPS( !useGPS ) }>
+				<NearMe size="small" color={ useGPS ? "primary" : "action" } />
+			</IconButton>
+		</div>
 		<MapContainer className={ classes.map } center={ isSmall ? [ 24, 15 ] : [ 15, 15 ] } zoom={ isSmall ? 0.75 : 1.75 }>
 			<MapConsumer>
 				{ map => {
@@ -77,12 +122,6 @@ export default function Map ({ allDives }) {
 					}, [ bounds ]);
 	
 					useEffect(() => { 
-						// new CachedTileLayer( "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-						// 	attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors &copy; <a href=\"https://carto.com/attributions\">CARTO</a>",
-						// 	databaseName: "tile-cache-data",
-						// 	maxAge: 1000 * 60 * 60 * 24 * 7,
-						// }).addTo( map );
-
 						map.on( "zoomend", () => {
 							dispatch({ type: "map.stopFlying" });
 							updateBounds();
@@ -90,14 +129,6 @@ export default function Map ({ allDives }) {
 						map.on( "moveend", () => updateBounds());
 						map.on( "resize", () => updateBounds());
 						map.addControl( searchProvider );
-						// map.addControl( L.control.locate({
-						// 	setView: "once",
-						// 	flyTo: true,
-						// 	locateOptions: {
-						// 		enableHighAccuracy: true,
-						// 		watch: true,
-						// 	},
-						// }));
 
 						setTimeout(() => map.invalidateSize(), 50 );
 					}, []);
@@ -184,11 +215,29 @@ export default function Map ({ allDives }) {
 							}) }
 						</>
 						}
+						{ ( useGPS && !_.isEmpty( userCoords )) && <>
+							<CircleMarker 
+								center={ [ _.get( userCoords, "latitude" ), _.get( userCoords, "longitude" ) ] } 
+								color="#fff"
+								weight={ 3 }
+								fillColor="#035AA6" 
+								fillOpacity={ 1 } 
+								radius={ 8 } 
+								interactive={ false }
+							/>
+							<Circle 
+								center={ [ _.get( userCoords, "latitude" ), _.get( userCoords, "longitude" ) ] } 
+								radius={ _.get( userCoords, "accuracy" ) } 
+								stroke={ false } 
+								color="#035AA6" 
+								interactive={ false }
+							/>
+						</> }
 					</>;
 				}}
 			</MapConsumer>
 		</MapContainer>
-	);
+	</> );
 }
 Map.propTypes = {
 	allDives: PropTypes.array,

@@ -84,7 +84,7 @@ const viewTypeMap = {
 		history: "threePane",
 	},
 	small: {
-		viewAll: "twoPane",
+		viewAll: "onePane",
 		viewOne: "twoPane",
 		add: "twoPane",
 		edit: "twoPane",
@@ -94,10 +94,15 @@ const viewTypeMap = {
 
 const sizingMap = {
 	small: {
+		onePane: {
+			one: { left: "0%", right: "0%", top: "0%", bottom: "0%", opacity: 1 },
+			two: { left: "0%", right: "0%", top: "100%", bottom: "0%", opacity: 0 },
+			three: { left: "0%", right: "0%", top: "100%", bottom: "0%", opacity: 0 },
+		},
 		twoPane: {
-			one: { left: "0%", right: "0%", top: "0%", bottom: "65%", opacity: 1 },
-			two: { left: "0%", right: "0%", top: "35%", bottom: 9, opacity: 1 },
-			three: { left: "0%", right: "0%", top: "100%", bottom: 0, opacity: 0 },
+			one: { left: "0%", right: "0%", top: "0%", bottom: "50%", opacity: 1 },
+			two: { left: "0%", right: "0%", top: "50%", bottom: "0%", opacity: 1 },
+			three: { left: "0%", right: "0%", top: "100%", bottom: "0%", opacity: 0 },
 		},
 		threePane: {
 			one: { left: "0%", right: "0%", top: "0%", bottom: "100%", opacity: 0 },

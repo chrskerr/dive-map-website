@@ -1,6 +1,6 @@
 
 // Packages
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useMemo } from "react";
 import _ from "lodash";
 import { gql, useQuery } from "@apollo/client";
 import { useParams } from "react-router-dom";
@@ -66,13 +66,13 @@ export default function Index () {
 	const dives = _.get( allDivesData, "dives" );
 
 	const { bounds, markerPositionType } = _.get( state, "explore.map" );
-	const filteredDiveSites = _.filter( dives, dive => {
+	const filteredDiveSites =  useMemo(() => _.filter( dives, dive => {
 		const lat = _.get( dive, `coords.${ markerPositionType }[0].lat` ) || _.get( dive, "coords.main[0].lat" );
 		const lng = _.get( dive, `coords.${ markerPositionType }[0].lng` ) || _.get( dive, "coords.main[0].lng" );
 		
-		if ( !lat || !lng ) return false;
+		if ( !lat || !lng || _.isEmpty( bounds )) return false;
 		else return lat > bounds.lat0 && lat < bounds.lat1 && lng > bounds.lng0 && lng < bounds.lng1;
-	});
+	}), [ bounds, dives ]);
 
 	const { data: oneDiveData } = useQuery( GET_DIVE, { variables: { id: dive }, skip: !dive });
 	const diveData = _.omit( _.get( oneDiveData, "dives_by_pk" ), "__typename" );

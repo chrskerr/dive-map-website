@@ -4,7 +4,7 @@ import React, { useState, useContext } from "react";
 import _ from "lodash";
 import { useHistory, useLocation } from "react-router-dom";
 import { AppBar, Toolbar, IconButton, Typography, Drawer, List, ListItem, ListItemAvatar, ListItemText, Modal, Paper } from "@material-ui/core";
-import { MenuRounded, AssignmentIndRounded, HomeRounded, ExploreRounded } from "@material-ui/icons";
+import { MenuOutlined, AssignmentIndOutlined, HomeOutlined, ExploreOutlined, PhotoCameraOutlined } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
 
 // App
@@ -26,6 +26,9 @@ const useStyles = makeStyles( theme => ({
 	},
 	titleText: {
 		paddingLeft: theme.spacing( 2 ),
+	},
+	drawerHeading: {
+		paddingBottom: theme.spacing( 3 ),
 	},
 	listItem: {
 		width: "16rem",
@@ -73,7 +76,7 @@ export default function TopNav () {
 						className={ classes.drawerIcon }
 						onClick={ () => setIsDrawerOpen( true ) }
 					>
-						<MenuRounded />
+						<MenuOutlined />
 					</IconButton>
 					<Icon style="jellyfish-outlined" colour="#fff" size="small" />
 					<Typography variant="h6" className={ classes.titleText }>Jellyfish</Typography>
@@ -93,13 +96,13 @@ export default function TopNav () {
 					<ListItem alignItems="center">
 						<Icon style="jellyfish-blue" size="large" />
 					</ListItem>
-					<ListItem divider>
+					<ListItem className={ classes.drawerHeading }>
 						<Typography variant="h5">Jellyfish</Typography>
 						<Typography className={ classes.betaText }>beta</Typography>
 					</ListItem>
 					<ListItem className={ classes.listItem } button selected={ selectedDrawerItem === "/" } onClick={ () => handleNavigate( "/" ) }>
 						<ListItemAvatar>
-							<HomeRounded />
+							<HomeOutlined />
 						</ListItemAvatar>
 						<ListItemText>
 							Home
@@ -107,15 +110,23 @@ export default function TopNav () {
 					</ListItem>
 					<ListItem className={ classes.listItem } button selected={ selectedDrawerItem === "/explore" } onClick={ () => handleNavigate( "/explore" ) }>
 						<ListItemAvatar>
-							<ExploreRounded />
+							<ExploreOutlined />
 						</ListItemAvatar>
 						<ListItemText>
 							Explore
 						</ListItemText>
 					</ListItem>
-					<ListItem className={ classes.listItem } divider button selected={ selectedDrawerItem === "/account" } onClick={ () => handleNavigate( "/account" ) }>
+					<ListItem className={ classes.listItem } button selected={ selectedDrawerItem === "/locate" } onClick={ () => handleNavigate( "/locate" ) }>
 						<ListItemAvatar>
-							<AssignmentIndRounded />
+							<PhotoCameraOutlined />
+						</ListItemAvatar>
+						<ListItemText>
+							Locate
+						</ListItemText>
+					</ListItem>
+					<ListItem className={ classes.listItem } button selected={ selectedDrawerItem === "/account" } onClick={ () => handleNavigate( "/account" ) }>
+						<ListItemAvatar>
+							<AssignmentIndOutlined />
 						</ListItemAvatar>
 						<ListItemText>
 							Account

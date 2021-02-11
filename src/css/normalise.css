@@ -21,13 +21,19 @@
    */
   
   body {
-		margin: 0;
+		margin: 0 !important;
+		margin-top: 0 !important;
 		overflow: hidden;
 		background: #035AA6;
+		width: 100vw !important;
   }
 
   #app {
 		background-color: #fff;
+  }
+
+  video#arjs-video {
+	  z-index: 1200 !important;
   }
   
   /**

@@ -1,6 +1,6 @@
 
 // Packages
-import React, { useReducer, useEffect, createContext } from "react";
+import React, { useState, useReducer, useEffect, createContext } from "react";
 import { ApolloProvider, ApolloClient, InMemoryCache } from "@apollo/client";
 import { CachePersistor, LocalForageWrapper } from "apollo3-cache-persist";
 import localforage from "localforage";
@@ -73,6 +73,17 @@ export const App = () => {
 	useEffect(() => {
 		if ( !breakpoint || !viewHeight ) _setBreakpoint();
 	}, [ breakpoint ]);
+
+	const [ styleEl, setStyleEl ] = useState( false );
+	useEffect(() => {
+		let el = styleEl;
+		if ( !el ) {
+			el = document.createElement( "style" );
+			document.body.appendChild( el );
+			setStyleEl( el );
+		}
+		el.innerHTML = `body { height: ${ viewHeight }px !important }`;
+	}, [ viewHeight ]);
 
 		
 	const detectMobile = useMobileDetect();
