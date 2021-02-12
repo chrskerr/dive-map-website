@@ -6,15 +6,16 @@ const fetch = require( "node-fetch" );
 const { ApolloServer, gql } = require( "apollo-server-express" );
 const _ = require( "lodash" );
 const express = require( "express" );
+const GraphQLJSON = require( "graphql-type-json" );
 
 admin.initializeApp( functions.config().firebase );
 
 
-// Create New User
-
 const API_HOST = "https://dev-divemap.hasura.app/v1/graphql";
 const HASURA_GRAPHQL_ADMIN_SECRET = functions.config().hasura.adminsecret;
 
+
+// Create New User
 const CREATE_USER = `
 	mutation( $object: users_insert_input! ) {
 		insert_users_one( object: $object ) {
@@ -53,8 +54,17 @@ exports.processSignUp = functions.auth.user().onCreate( async user => {
 
 
 // Hasura integration
+const INSERT_DIVE_REVISION = `
+	mutation( $object: dive_revisions_insert_input! ) {
+		insert_dive_revisions_one( object: $object ) {
+			id
+		}
+  	}
+`;
 
 const typeDefs = gql`
+	scalar JSON
+
 	type Query {
 		null: Boolean
 	}
@@ -62,10 +72,12 @@ const typeDefs = gql`
 	type Mutation {
 		update_email( email: String! ): Boolean
 		update_password( password: String! ): Boolean
+		create_dive_revision( id: String!, changes: JSON!, dive: JSON! ): ID
 	}
 `;
 const resolvers = {
 	Query: { null: () => true },
+	JSON: GraphQLJSON,
 	Mutation: {
 		update_email: async ( parent, args, { headers }) => {
 			try {
@@ -94,6 +106,38 @@ const resolvers = {
 				console.log( res );
 
 				return true;
+			} catch ( error ) {
+				console.error( error );
+				throw new Error( "Something went wrong. Please try again." );
+			}
+		},
+		create_dive_revision: async ( parent, args, { headers }) => {
+			try {
+				const uid = _.get( headers, "x-hasura-user-id" );
+				const id = _.get( args, "id" );
+				const changes = _.get( args, "changes" );
+				const dive = _.get( args, "dive" );
+
+				if ( !uid || !id || !changes ) return false;
+
+				const res = await doQuery( INSERT_DIVE_REVISION, { object: {
+					changes, 
+					_owner: uid,
+					dive: {
+						data: {
+							...dive,
+							...changes,
+							id,
+						}, 
+						on_conflict: { 
+							constraint: "dives_pkey", 
+							update_columns: [ "name", "depth", "description", "dive_plan", "type", "coords" ], 
+						},
+					},
+				}});
+				console.log( res );
+
+				return _.get( res, "data.insert_dive_revisions_one.id" );
 			} catch ( error ) {
 				console.error( error );
 				throw new Error( "Something went wrong. Please try again." );

@@ -55,12 +55,12 @@ export default function Index () {
 		if ( !dive && action ) history.push( "/explore" );
 	}, [ dive, action, view ]);
 
+	const mainLatlngs = _.get( state, "explore.dive.coords.main[0]" );
 	useEffect(() => {
-		const latlngs = _.get( state, "explore.dive.coords.main[0]" );
-		if ( map && !_.isEmpty( latlngs ) && view !== "add" && view !== "viewAll" ) { 
-			dispatch({ type: "map.fly", latlngs, zoom: 14 });
+		if ( map && !_.isEmpty( mainLatlngs ) && view === "viewOne" ) { 
+			dispatch({ type: "map.fly", latlngs: mainLatlngs, zoom: 14 });
 		}
-	}, [ view, map ]);
+	}, [ mainLatlngs, map ]);
 
 	const { data: allDivesData } = useQuery( GET_DIVES, { fetchPolicy: "cache-and-network" });
 	const dives = _.get( allDivesData, "dives" );

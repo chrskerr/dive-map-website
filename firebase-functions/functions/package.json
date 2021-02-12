@@ -17,6 +17,7 @@
 		"firebase-admin": "^9.4.2",
 		"firebase-functions": "^3.13.1",
 		"graphql": "^15.5.0",
+		"graphql-type-json": "^0.3.2",
 		"lodash": "^4.17.20",
 		"node-fetch": "^2.6.1"
 	},

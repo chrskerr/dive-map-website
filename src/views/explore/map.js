@@ -1,6 +1,6 @@
 
 // Packages
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useRef } from "react";
 import PropTypes from "prop-types";
 import _ from "lodash";
 import { IconButton } from "@material-ui/core";
@@ -31,7 +31,7 @@ const useStyles = makeStyles( theme => ({
 		borderRadius: theme.spacing( 0.5 ),
 		borderStyle: "solid",
 		borderWidth: 1.8,
-		borderColor: theme.palette.grey[ 400 ],
+		borderColor: props => props.useGPS ? theme.palette.primary.main : theme.palette.grey[ 400 ],
 		padding: theme.spacing( 0.5 ),
 		"& .MuiSvgIcon-root": {
 			fontSize: "90%",
@@ -41,7 +41,9 @@ const useStyles = makeStyles( theme => ({
 
 
 export default function Map ({ allDives }) {
-	const classes = useStyles();
+	const [ useGPS, setUseGPS ] = useState( false );
+
+	const classes = useStyles({ useGPS });
 	const [ state, dispatch ] = useContext( State );	
 	const history = useHistory();
 	
@@ -57,15 +59,12 @@ export default function Map ({ allDives }) {
 	// GEO
 	const [ geoId, setGeoId ] = useState( false );
 	const [ userCoords, setUserCoords ] = useState( false );
-	const [ useGPS, setUseGPS ] = useState( false );
+	const prevUserCoords = useRef();
 	useEffect(() => {
 		if ( useGPS && !geoId ) {
 			if ( navigator.geolocation ) {
 				const id = navigator.geolocation.watchPosition(
-					({ coords }) => {
-						if ( !userCoords ) dispatch({ type: "map.fly", latlngs: [ _.get( coords, "latitude" ), _.get( coords, "longitude" ) ], zoom: 14 });
-						if ( !_.isEqual( userCoords, coords )) setUserCoords( coords );
-					}, 
+					({ coords }) => setUserCoords( coords ),
 					() => setGeoId( false ), 
 					{ enableHighAccuracy: true },
 				);
@@ -76,10 +75,15 @@ export default function Map ({ allDives }) {
 		if ( !useGPS ) {
 			navigator.geolocation.clearWatch( geoId );
 			setGeoId( false );
+			setUserCoords( false );
 		}
 
 		return () => navigator.geolocation.clearWatch( geoId );
 	}, [ useGPS ]);
+	useEffect(() => {
+		if ( !prevUserCoords.current ) dispatch({ type: "map.fly", latlngs: [ _.get( userCoords, "latitude" ), _.get( userCoords, "longitude" ) ], zoom: 14 });
+		prevUserCoords.current = userCoords;
+	}, [ userCoords ]);
 
 	// Edit
 	const view = _.get( state, "explore.view" );
@@ -137,7 +141,7 @@ export default function Map ({ allDives }) {
 						if ( isRequesting ) map.on( "dblclick", ({ latlng }) => dispatch({ type: "addEdit.supplyMarker", latlng }));
 						else map.off( "dblclick" );
 					}, [ isRequesting ]);
-	
+
 					return <>
 						<TileLayer
 							attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -204,7 +208,7 @@ export default function Map ({ allDives }) {
 										} : {}}
 									>
 										<Tooltip>
-											<span>{ _.startCase( diveType )}: Marker #{ index + 1 }.</span>
+											<span>{ _.startCase( diveType ) }: Marker #{ index + 1 }.</span>
 											{ isEditing && <>
 												<br /><span>Drag me to relocate.</span>
 												<br /><span>Double-click me to delete.</span>
@@ -215,7 +219,7 @@ export default function Map ({ allDives }) {
 							}) }
 						</>
 						}
-						{ ( useGPS && !_.isEmpty( userCoords )) && <>
+						{ ( userCoords && !isFlying ) && <>
 							<CircleMarker 
 								center={ [ _.get( userCoords, "latitude" ), _.get( userCoords, "longitude" ) ] } 
 								color="#fff"

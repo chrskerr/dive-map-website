@@ -61,19 +61,9 @@ const validationSchema = yup.object({
 		.required( "Dive site type is required" ),
 });
 
-const INSERT_DIVE = gql`
-	mutation( $object: dives_insert_input! ) {
-		insert_dives_one( object: $object ) {
-			id
-		}
-	}
-`;
-
-const UPDATE_DIVE = gql`
-	mutation( $object: dive_revisions_insert_input! ) {
-		insert_dive_revisions_one( object: $object ) {
-			id
-		}
+const INSERT_DIVE_REVISION = gql`
+	mutation( $id: String!, $changes: JSON!, $dive: JSON! ) {
+		create_dive_revision( id: $id, changes: $changes, dive: $dive )
 	}
 `;
 
@@ -86,56 +76,34 @@ export default function ViewAddEdit () {
 	const { isAuthenticated } = _.get( state, "auth" );
 	const { id } = _.get( state, "user" );
 
-	const [ insertDive ] = useMutation( INSERT_DIVE, { refetchQueries: [ "GetAllDives" ], awaitRefetchQueries: true }); 
-	const [ updateDive ] = useMutation( UPDATE_DIVE, { refetchQueries: [ "GetAllDives" ], awaitRefetchQueries: true }); 
+	const [ insertDiveRevision ] = useMutation( INSERT_DIVE_REVISION, { refetchQueries: [ "GetAllDives" ], awaitRefetchQueries: true }); 
 
 	const dive = _.get( state, "explore.dive" );
 	const { coords, name, description, dive_plan, depth, type, requestingMarkerType } = dive;
 	
 	const view = _.get( state, "explore.view" );
 	const fieldVariant = view === "viewOne" ? "standard" : "outlined";
-
-	const mainCoords = _.get( coords, "main" );
+	const mainCoords = _.head( _.get( coords, "main" ));
 
 	const formik = useFormik({
 		initialValues: view === "add" ? 
-			{ name: "", description: "", dive_plan: "", depth: 0, type: "route" } :
-			{ name, description, dive_plan, depth, type },
+			{ name: "", description: "", dive_plan: "", depth: 0, type: "route", coords } :
+			{ name, description, dive_plan, depth, type, coords },
 		validationSchema: validationSchema,
 		enableReinitialize: true,
 		onSubmit: async ( values, { setFieldError }) => {
 			try {
+
 				if ( _.isEmpty( mainCoords )) throw Error({ message: "At least one waypoint must be selected" });
 
-				if ( view === "add" ) {
-					await insertDive({ variables: {
-						object: {
-							...values,
-							id: `${ _.get( _.head( mainCoords ), "lat" ) }-${ _.get( _.head( mainCoords ), "lat" ) }-${ _.kebabCase( _.get( values, "name" )) }`, 
-							coords,
-							revisions: {
-								data: {
-									changes: { ...values, coords }, 
-									_owner: id,
-								},
-							},
-						},
-					}});
-				}
-				else {
-					const changes = _.reduce( values, ( curr, val, key ) => {
-						return val !== _.get( dive, key ) ? { ...curr, [ key ]: val } : curr;
-					}, {});
+				const id = diveId || `${ _.get( mainCoords, "lat" ) }-${ _.get( mainCoords, "lng" ) }-${ _.kebabCase( _.get( values, "name" )) }`;
 
-					await updateDive({ variables: {
-						object: {
-							_dive: diveId, 
-							_owner: id,
-							changes,
-						},
-					}});
-				}
+				const changes = view === "add" ? values : _.reduce( values, ( curr, val, key ) => {
+					return val !== _.get( dive, key ) ? { ...curr, [ key ]: val } : curr;
+				}, {});
 
+				await insertDiveRevision({ variables: { id, changes, dive: _.pick( dive, [ "name", "depth", "description", "dive_plan", "type", "coords" ]) }});
+				
 				_return();
 			} catch ( error ) {
 				console.error( error );
@@ -162,8 +130,10 @@ export default function ViewAddEdit () {
 	};
 
 	useEffect(() => {
-		if ( !_.isEqual( formik.values.type, type ) && formik.values.type && type ) dispatch({ type: "explore.updateDive", dive: { type: formik.values.type }});
-	}, [ formik.values.type, type ]);
+		if (( view === "add" || view === "edit" ) && !_.isEqual( formik.values.type, type ) && formik.values.type ) {
+			dispatch({ type: "explore.updateDive", dive: { type: formik.values.type }});
+		}
+	}, [ formik.values.type, type, view  ]);
 	
 	if (( !id || !isAuthenticated ) && view !== "viewOne" ) return <p>You must be logged in to { view } a dive.</p>;
 

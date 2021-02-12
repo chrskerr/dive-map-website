@@ -1,21 +1,25 @@
 
 // Packages
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import PropTypes from "prop-types";
 import { gql, useQuery } from "@apollo/client";
 import _ from "lodash";
+import { Typography } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
-import { Canvas, useThree } from "react-three-fiber";
+import { Canvas } from "react-three-fiber";
 import { Haversine } from "haversine-position";
 
 // App
+import ThreeRenderer from "./renderer";
 
 
-
-const useClasses = makeStyles({
+const useClasses = makeStyles( theme => ({
 	root: {
 		position: "relative",
 		flexGrow: 1,
+		padding: theme.spacing( 2 ),
+		"& .MuiTypography-root": {
+			fontSize: "90%",
+		},
 	},
 	container: {
 		position: "absolute",
@@ -26,7 +30,7 @@ const useClasses = makeStyles({
 		justifyContent: "center",
 		alignItems: "center",
 	},
-});
+}));
 
 const GET_DIVES = gql`
 	query GetAllDives {
@@ -38,14 +42,7 @@ const GET_DIVES = gql`
 	}
 `;
 
-export default function ARWrapper () {
-	const { data: allDivesData } = useQuery( GET_DIVES, { fetchPolicy: "cache-and-network" });
-	const dives = _.get( allDivesData, "dives" );
-
-	return <AR dives={ dives } />;
-}
-
-const AR = ({ dives }) => {
+export default function AR () {
 	const classes = useClasses();
 	const $_root = useRef();
 
@@ -57,9 +54,7 @@ const AR = ({ dives }) => {
 		let id;
 		if ( navigator.geolocation ) {
 			id = navigator.geolocation.watchPosition(
-				({ coords }) => {
-					if ( !_.isEqual( coords, userCoords )) setUserCoords( coords );
-				}, 
+				({ coords }) => setUserCoords( coords ),
 				() => setGeoError( true ), 
 				{ enableHighAccuracy: true },
 			);
@@ -78,96 +73,115 @@ const AR = ({ dives }) => {
 
 	// Device Orientation
 	const [ requestedOrientation, setRequestedOrientation ] = useState( false );
-	const [ deviceOrientation, seDeviceOrientation ] = useState( false );
-	const _handleDeviceOrientation = e => {
-		const newOrientation = { z: e.alpha, x: e.beta, y: e.gamma };
-		if ( !_.isEqual( newOrientation, deviceOrientation )) seDeviceOrientation( newOrientation );
-	};
+	const [ deviceOrientation, setDeviceOrientation ] = useState( false );
+	const _handleDeviceOrientation = e => _.throttle(() => setDeviceOrientation({ z: e.alpha, x: e.beta, y: e.gamma }), 25 );
 	useEffect(() => {
 		if ( !requestedOrientation && userCoords && !geoError ) {
 			setRequestedOrientation( true );
-			window.addEventListener( "deviceorientation", _handleDeviceOrientation, true );
+			if ( window.DeviceOrientationEvent ) window.addEventListener( "deviceorientation", _handleDeviceOrientation, false );
 		}
 		return () => window.removeEventListener( "deviceorientation", _handleDeviceOrientation );
 	}, [ geoId, geoError ]);
 
 	// Camera
 	const [ camera, setCamera ] = useState( false );
-	const [ videoDimensions, setVideoDimensions ] = useState( false );
-	const _handleVideoResize = e => setVideoDimensions({ height: _.get( e, "target.offsetHeight" ), width: _.get( e, "target.offsetWidth" ) });
+	const mediaConstraints = { 
+		height: _.get( $_root, "current.offsetHeight" ),
+		width: _.get( $_root, "current.offsetWidth" ),
+		facingMode: "environment",
+	};
 
 	useEffect(() => {
-		let stream, el;
-		if ( !camera ) {
-		// if ( deviceOrientation && !camera ) {
+		let stream;
+		if ( !camera && deviceOrientation ) {
 			( async () => {
-				stream = await navigator.mediaDevices.getUserMedia({ 
-					video: true, 
-					audio: false,
-					facingMode: "environment",
-					height: _.get( $_root, "current.offsetHeight" ),
-					width: _.get( $_root, "current.offsetWidth" ),
-				});
-				el = document.getElementById( "ar-video-playback" );
-				el.srcObject = stream; 
-				el.addEventListener( "resize", _handleVideoResize );
+				stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: mediaConstraints });
+				document.getElementById( "ar-video-playback" ).srcObject = stream;
 				setCamera( stream );
 			})();
 		}
 
-		return () => {
-			_.forEach( stream.getTracks(), track => track.stop());
-			el.removeEventListener( "resize", _handleVideoResize );
-		};
+		return () => _.forEach( stream.getTracks(), track => track.stop());
 	}, [ deviceOrientation ]);
-
-	const origin = {
-		lat: _.get( userCoords, "latitude" ) || 1,
-		lng: _.get( userCoords, "longitude" ) || 1,
-	};
-
-	let haversine;
-	if ( origin.lat && origin.lng ) haversine = new Haversine( origin );
+	
+	useEffect(() => {
+		if ( camera ) _.forEach( camera.getTracks(), track => track.applyConstraints( mediaConstraints ));
+	}, [ mediaConstraints ]);
 
 
-	const processedDives = useMemo(() => _.compact( _.map( dives, ({ coords }) => {
-		if ( !haversine ) return false; 
+	// Dive Data
+	const userLat = _.get( userCoords, "latitude" );
+	const userLng = _.get( userCoords, "longitude" );
+	const [ metresPerDegree, setMetresPerDegree ] = useState({ lat: null, lng: null });
 
-		// const main = _.get( coords, "main" );
-		// const mainLat = _.get( main, "[0].lat" );
-		// const mainLng = _.get( main, "[0].lng" );
-		// const distanceToMain = haversine.getDisance({ lat: mainLat, lng: mainLng });
-
-		// if ( distanceToMain > 500 ) return false
-
-		return _.mapValues( coords, type => {
-			return _.map( type, coord => ({
-				distance: haversine.getDistance( coord ),
-				bearing: haversine.getBearing( coord ),
-			}));
+	useEffect(() =>{ 
+		const haversine = new Haversine({ lat: userLat, lng: userLng });
+		setMetresPerDegree({
+			lat: haversine.getDistance({ lat: userLat + 1, lng: userLng }),
+			lng: haversine.getDistance({ lat: userLat, lng: userLng + 1 }),
 		});
-	})), [ dives, haversine, origin ]);
+	}, [ userLat, userLng ]);
+
+	const { data: allDivesData } = useQuery( GET_DIVES, { fetchPolicy: "cache-and-network" });
+	const dives = _.get( allDivesData, "dives" );
+
+	const processedDives = useMemo(() => _.compact( _.map( dives, ({ coords, type }) => {
+		if ( !userLat || !userLng || !metresPerDegree.lat || !metresPerDegree.lng ) return;
+
+		const main = _.get( coords, "main" );
+		const x = ( userLng - _.get( main, "[0].lat" )) * metresPerDegree.lat;
+		const z = ( _.get( main, "[0].lng" ) - userLng ) * metresPerDegree.lng;
+
+		if ( x > 150 || z > 150 ) return false;
+
+		return {
+			type,
+			coords: _.mapValues( coords, type => {
+				return _.map( type, coord => ({
+					z: ( userLat - coord.lat ) * metresPerDegree.lat, // forward to back from camera.y === 0, negative means forward
+					x: ( coord.lng - userLng ) * metresPerDegree.lng, // right to left from camera.y === 0, negative means left
+				}));
+			}),
+		};
+	})), [ dives, userLat, userLng ]);
+
+	const [ intervalId, setIntervalId ] = useState( false );
+	const [ dotsState, setDotsState ] = useState( 0 );
+	const dots = dotsState === 0 ? "" : _.join( _.map( _.range( 0, dotsState ), () => "." ), "" );
+
+	useEffect(() => {
+		let id;
+		if ( !camera && !intervalId ) {
+			console.log( "here" );
+			id = setInterval(() => setDotsState( d => d >= 3 ? 0 : d + 1 ), 500 );
+			setIntervalId( id );
+		}
+		if ( camera && intervalId ) {
+			clearInterval( intervalId );
+			setIntervalId( false );
+		}
+
+		return () => clearInterval( id );
+	}, [ camera ]);
 
 	return (
 		<div className={ classes.root } ref={ $_root }>
-			<p>Requesting GPS{ geoId ? ": done!" : "..." }</p>
+			<Typography>Requesting GPS{ geoId ? ": done!" : dots }</Typography>
 			{ geoId && <>
-				<p>Finding you{ userCoords ? ": done!" : "..." }</p>
+				<Typography>Finding you{ userCoords ? ": done!" : dots }</Typography>
 				{ userCoords && <>
-					<p>Determining device orientation{ deviceOrientation ? ": done!" : "..." }</p>
+					<Typography>Determining device orientation{ deviceOrientation ? ": done!" : dots }</Typography>
 					{ deviceOrientation &&
-						<p>Requesting camera{ camera ? ": done!" : "..." }</p>
+						<Typography>Requesting camera{ camera ? ": done!" : dots }</Typography>
 					}
 				</> }
 			</> }
-			{/* { ( videoDimensions && userCoords && deviceOrientation ) &&  */}
-			{ ( videoDimensions ) && 
+			{ ( camera && userCoords && deviceOrientation ) && 
+			// { ( camera ) && 
 				<div className={ classes.container } style={{ zIndex: 30 }}>
-					<div style={{ ...videoDimensions }}>
-						<Canvas>
-							<ThreeRenderer processedDives={ processedDives } userCoords={ userCoords } deviceOrientation={ deviceOrientation } />
-						</Canvas>
-					</div>
+					<Canvas>
+						<ThreeRenderer processedDives={ processedDives } userCoords={ userCoords } deviceOrientation={ deviceOrientation } />
+					</Canvas>
 				</div> 
 			}
 			<div className={ classes.container } style={{ zIndex: 25 }}>
@@ -175,32 +189,4 @@ const AR = ({ dives }) => {
 			</div>
 		</div>
 	);
-};
-AR.propTypes = {
-	dives: PropTypes.array,
-};
-
-const ThreeRenderer = ({ processedDives, userCoords, deviceOrientation }) => {
-	const { camera } = useThree();
-
-	console.log( camera, processedDives, userCoords, deviceOrientation );
-
-	useEffect(() => {
-		camera.rotation.z = 45 * Math.PI / 180 ; // from orientation 
-		camera.rotation.y = 45 * Math.PI / 180 ; // from orientation
-		camera.rotation.x = 45 * Math.PI / 180 ; // from compass heading?
-	}, []);
-
-	return (
-		<mesh visible userData={{ hello: "world" }} position={[ 1, 2, 3 ]} rotation={[ Math.PI / 2, 0, 0 ]}>
-			<coneGeometry args={[ 5, 20, 32 ]} />
-			<meshStandardMaterial color="hotpink" transparent />
-		</mesh>
-	);
-
-};
-ThreeRenderer.propTypes = {
-	processedDives: PropTypes.array,
-	userCoords: PropTypes.object,
-	deviceOrientation: PropTypes.object,
-};
+}
