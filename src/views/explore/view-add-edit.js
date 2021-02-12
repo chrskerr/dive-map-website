@@ -1,6 +1,6 @@
 
 // Packages
-import React, { useEffect, useContext } from "react";
+import React, { useEffect, useContext, useState } from "react";
 import { TextField, Button, Grid, Typography, Select, MenuItem, FormControl, InputLabel, Tooltip } from "@material-ui/core";
 import { ChevronRightRounded, AutorenewRounded, AddRounded, ChevronLeftRounded } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
@@ -73,6 +73,7 @@ export default function ViewAddEdit () {
 	const { dive: diveId } = useParams();
 
 	const [ state, dispatch ] = useContext( State );
+	const [ isTooltipOpen, setIsTooltipOpen ] = useState( false );
 	const { isAuthenticated } = _.get( state, "auth" );
 	const { id } = _.get( state, "user" );
 
@@ -80,7 +81,8 @@ export default function ViewAddEdit () {
 
 	const dive = _.get( state, "explore.dive" );
 	const { coords, name, description, dive_plan, depth, type, requestingMarkerType } = dive;
-	
+	const coordsEdited = _.get( state, "explore.coordsEdited" );
+
 	const view = _.get( state, "explore.view" );
 	const fieldVariant = view === "viewOne" ? "standard" : "outlined";
 	const mainCoords = _.head( _.get( coords, "main" ));
@@ -126,7 +128,10 @@ export default function ViewAddEdit () {
 	};
 
 	const _edit = () => {
-		if ( view === "viewOne" ) history.push( `/explore/${ diveId }/edit` );
+		if ( view === "viewOne" ) {
+			if ( isAuthenticated ) history.push( `/explore/${ diveId }/edit` );
+			else setIsTooltipOpen( e => !e );
+		}
 	};
 
 	useEffect(() => {
@@ -146,7 +151,11 @@ export default function ViewAddEdit () {
 				<Grid item xs={ 6 }>
 				</Grid>
 				<Grid item xs={ 3 }>
-					{ view === "viewOne" && <Button variant="outlined" fullWidth size="small" onClick={ _edit }>Edit</Button> }
+					{ view === "viewOne" && 
+						<Tooltip open={ isTooltipOpen } placement="left" arrow title="You must be logged in to do this">
+							<Button variant="outlined" fullWidth size="small" onClick={ _edit }>Edit</Button>
+						</Tooltip>
+					}
 				</Grid>
 				<Grid item xs={ 12 }>
 					<TextField
@@ -280,7 +289,7 @@ export default function ViewAddEdit () {
 							fullWidth 
 							size="small"
 							type="submit" 
-							disabled={ !formik.dirty || !_.isEmpty( formik.errors ) || formik.isSubmitting || _.isEmpty( mainCoords ) }
+							disabled={ coordsEdited ? false : !formik.dirty || !_.isEmpty( formik.errors ) || formik.isSubmitting || _.isEmpty( mainCoords ) }
 							endIcon={ formik.isSubmitting ? <AutorenewRounded className={ classes.spinner } /> : <ChevronRightRounded /> }
 						>Save</Button>
 					</Grid>

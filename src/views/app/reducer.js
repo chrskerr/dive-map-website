@@ -31,13 +31,8 @@ export default ( state, action ) => {
 				...payload,
 			},
 		};
-	case "userPurge":
-		return {
-			...state,
-			user: {
-				..._.get( initialState, "user" ), 
-			},
-		};
+	case "purgee":
+		return { ...initialState };
 
 	// Explore
 	case "explore.updateDive":
@@ -58,6 +53,7 @@ export default ( state, action ) => {
 				...state, 
 				explore: {
 					..._.get( state, "explore" ),
+					coordsEdited: false,
 					view: "viewAll",
 					dive: { ..._.get( initialState, "explore.dive" ) },
 					map: {
@@ -85,6 +81,7 @@ export default ( state, action ) => {
 				...state, 
 				explore: {
 					..._.get( state, "explore" ),
+					coordsEdited: false,
 					view: "history",
 					map: {
 						..._.get( state, "explore.map" ),
@@ -98,6 +95,7 @@ export default ( state, action ) => {
 				...state, 
 				explore: {
 					..._.get( state, "explore" ),
+					coordsEdited: false,
 					view: "add",
 					dive: {
 						..._.get( state, "explore.dive" ),
@@ -109,6 +107,7 @@ export default ( state, action ) => {
 				...state, 
 				explore: {
 					..._.get( state, "explore" ),
+					coordsEdited: false,
 					view: "edit",
 					dive: {
 						..._.get( state, "explore.dive" ),
@@ -147,7 +146,9 @@ export default ( state, action ) => {
 			},
 		};
 	case "map.fly":
-		if ( _.get( state, "explore.map.map" )) _.get( state, "explore.map.map" ).flyTo( _.get( action, "latlngs" ), _.get( action, "zoom" ));
+		if ( _.get( state, "explore.map.map" ) && _.get( action, "latlngs" ) && _.get( action, "zoom" )) {
+			_.get( state, "explore.map.map" ).flyTo( _.get( action, "latlngs" ), _.get( action, "zoom" ));
+		}
 		return {
 			...state,
 			explore: {
@@ -177,6 +178,7 @@ export default ( state, action ) => {
 			...state,
 			explore: {
 				..._.get( state, "explore" ),
+				coordsEdited: true,
 				dive: {
 					..._.get( state, "explore.dive" ),
 					coords: {
@@ -194,6 +196,7 @@ export default ( state, action ) => {
 			...state,
 			explore: {
 				..._.get( state, "explore" ),
+				coordsEdited: true,
 				dive: {
 					..._.get( state, "explore.dive" ),
 					coords: {
@@ -211,6 +214,7 @@ export default ( state, action ) => {
 			...state,
 			explore: {
 				..._.get( state, "explore" ),
+				coordsEdited: true,
 				dive: {
 					..._.get( state, "explore.dive" ),
 					coords: {

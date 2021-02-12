@@ -30,6 +30,7 @@ export default {
 	},
 	explore: {
 		view: "viewAll",
+		coordsEdited: false,
 		dive: {
 			id: "",
 			depth: 0,

@@ -42,8 +42,8 @@
     "zxcvbn": "^4.4.2"
   },
   "scripts": {
-	"start": "react-app-rewired start",
-	"ngrok": "ngrok ",
+    "start": "react-app-rewired start",
+    "ngrok": "ngrok ",
     "build": "react-scripts build",
     "postbuild": "  workbox generateSW workbox-config.js",
     "deploy:live": "yarn build && firebase deploy --only hosting:live",

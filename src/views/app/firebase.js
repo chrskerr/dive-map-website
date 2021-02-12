@@ -62,7 +62,7 @@ export default function FirebaseProvider ({ children }) {
 			},
 			signOut: () => {
 				firebaseAuth.signOut();
-				dispatch({ type: "userPurge" });
+				dispatch({ type: "purge" });
 				if ( persistor ) persistor.purge();
 			},
 		});

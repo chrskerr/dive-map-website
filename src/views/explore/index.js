@@ -1,6 +1,6 @@
 
 // Packages
-import React, { useContext, useEffect, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useRef } from "react";
 import _ from "lodash";
 import { gql, useQuery } from "@apollo/client";
 import { useParams } from "react-router-dom";
@@ -34,6 +34,7 @@ export default function Index () {
 	
 	const map = _.get( state, "explore.map.map" );
 	const view = _.get( state, "explore.view" );
+	const prevView = useRef();
 
 	useEffect(() => {
 		if ( dive === "add" ) { 
@@ -57,10 +58,11 @@ export default function Index () {
 
 	const mainLatlngs = _.get( state, "explore.dive.coords.main[0]" );
 	useEffect(() => {
-		if ( map && !_.isEmpty( mainLatlngs ) && view === "viewOne" ) { 
-			dispatch({ type: "map.fly", latlngs: mainLatlngs, zoom: 14 });
+		if ( map && !_.isEmpty( mainLatlngs ) && ( view === "viewOne" || view === "edit" )) { 
+			if ( view ==="viewOne" || ( view === "edit" && prevView.current !== "edit" )) dispatch({ type: "map.fly", latlngs: mainLatlngs, zoom: 14 });
+			prevView.current = view;
 		}
-	}, [ mainLatlngs, map ]);
+	}, [ mainLatlngs, map, view ]);
 
 	const { data: allDivesData } = useQuery( GET_DIVES, { fetchPolicy: "cache-and-network" });
 	const dives = _.get( allDivesData, "dives" );

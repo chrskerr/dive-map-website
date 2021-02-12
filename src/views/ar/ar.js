@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { gql, useQuery } from "@apollo/client";
 import _ from "lodash";
-import { Typography } from "@material-ui/core";
+import { Container, Button, Typography } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
 import { Canvas } from "react-three-fiber";
 import { Haversine } from "haversine-position";
@@ -11,14 +11,13 @@ import { Haversine } from "haversine-position";
 // App
 import ThreeRenderer from "./renderer";
 
-
 const useClasses = makeStyles( theme => ({
 	root: {
 		position: "relative",
 		flexGrow: 1,
 		padding: theme.spacing( 2 ),
 		"& .MuiTypography-root": {
-			fontSize: "90%",
+			paddingBottom: theme.spacing( 1 ),
 		},
 	},
 	container: {
@@ -46,13 +45,38 @@ export default function AR () {
 	const classes = useClasses();
 	const $_root = useRef();
 
+	// Device Orientation
+	const [ deviceOrientation, setDeviceOrientation ] = useState( true );
+	const _handleDeviceOrientation = e => {
+		const x = _.round( e.beta, 0 );
+		if ( x !== _.get( deviceOrientation, "x" ))setDeviceOrientation({ x });
+	};
+
+	const approve = async () => {
+		if ( window.DeviceOrientationEvent ) {
+			if ( _.isFunction( window.DeviceOrientationEvent.requestPermission )) {
+				window.DeviceOrientationEvent.requestPermission()
+					.then( res => {
+						if ( res === "granted" ) window.addEventListener( "deviceorientation", _handleDeviceOrientation, false );
+					})
+					.catch( console.error );
+			}
+			else window.addEventListener( "deviceorientation", _handleDeviceOrientation, false );
+		}
+		else alert( "I'm sorry, but your browser won't support augmented reality" );
+	};
+	useEffect(() => {
+		return () => window.removeEventListener( "deviceorientation", _handleDeviceOrientation );
+	}, []);
+
 	// GPS
 	const [ userCoords, setUserCoords ] = useState( false );
 	const [ geoId, setGeoId ] = useState( false );
 	const [ geoError, setGeoError ] = useState( false );
+
 	useEffect(() => {
 		let id;
-		if ( navigator.geolocation ) {
+		if ( navigator.geolocation && deviceOrientation && !geoId ) {
 			id = navigator.geolocation.watchPosition(
 				({ coords }) => setUserCoords( coords ),
 				() => setGeoError( true ), 
@@ -62,8 +86,10 @@ export default function AR () {
 		}
 		else setGeoError( true );
 
-		return () => navigator.geolocation.clearWatch( id );
-	}, []);
+		return () => { 
+			if ( id ) navigator.geolocation.clearWatch( id );
+		};
+	}, [ deviceOrientation ]);
 	useEffect(() => {
 		if ( geoError ) {
 			navigator.geolocation.clearWatch( geoId );
@@ -71,29 +97,17 @@ export default function AR () {
 		}
 	}, [ geoError ]);
 
-	// Device Orientation
-	const [ requestedOrientation, setRequestedOrientation ] = useState( false );
-	const [ deviceOrientation, setDeviceOrientation ] = useState( false );
-	const _handleDeviceOrientation = e => _.throttle(() => setDeviceOrientation({ z: e.alpha, x: e.beta, y: e.gamma }), 25 );
-	useEffect(() => {
-		if ( !requestedOrientation && userCoords && !geoError ) {
-			setRequestedOrientation( true );
-			if ( window.DeviceOrientationEvent ) window.addEventListener( "deviceorientation", _handleDeviceOrientation, false );
-		}
-		return () => window.removeEventListener( "deviceorientation", _handleDeviceOrientation );
-	}, [ geoId, geoError ]);
-
 	// Camera
 	const [ camera, setCamera ] = useState( false );
 	const mediaConstraints = { 
 		height: _.get( $_root, "current.offsetHeight" ),
 		width: _.get( $_root, "current.offsetWidth" ),
-		facingMode: "environment",
+		facingMode: { ideal: "environment" },
 	};
 
 	useEffect(() => {
-		let stream;
-		if ( !camera && deviceOrientation ) {
+		let stream = camera;
+		if ( !stream && userCoords ) {
 			( async () => {
 				stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: mediaConstraints });
 				document.getElementById( "ar-video-playback" ).srcObject = stream;
@@ -101,8 +115,10 @@ export default function AR () {
 			})();
 		}
 
-		return () => _.forEach( stream.getTracks(), track => track.stop());
-	}, [ deviceOrientation ]);
+		return () => {
+			if ( stream ) _.forEach( stream.getTracks(), track => track.stop());
+		};
+	}, [ userCoords, camera ]);
 	
 	useEffect(() => {
 		if ( camera ) _.forEach( camera.getTracks(), track => track.applyConstraints( mediaConstraints ));
@@ -145,46 +161,35 @@ export default function AR () {
 		};
 	})), [ dives, userLat, userLng ]);
 
-	const [ intervalId, setIntervalId ] = useState( false );
-	const [ dotsState, setDotsState ] = useState( 0 );
-	const dots = dotsState === 0 ? "" : _.join( _.map( _.range( 0, dotsState ), () => "." ), "" );
-
-	useEffect(() => {
-		let id;
-		if ( !camera && !intervalId ) {
-			console.log( "here" );
-			id = setInterval(() => setDotsState( d => d >= 3 ? 0 : d + 1 ), 500 );
-			setIntervalId( id );
-		}
-		if ( camera && intervalId ) {
-			clearInterval( intervalId );
-			setIntervalId( false );
-		}
-
-		return () => clearInterval( id );
-	}, [ camera ]);
-
 	return (
 		<div className={ classes.root } ref={ $_root }>
-			<Typography>Requesting GPS{ geoId ? ": done!" : dots }</Typography>
-			{ geoId && <>
-				<Typography>Finding you{ userCoords ? ": done!" : dots }</Typography>
-				{ userCoords && <>
-					<Typography>Determining device orientation{ deviceOrientation ? ": done!" : dots }</Typography>
-					{ deviceOrientation &&
-						<Typography>Requesting camera{ camera ? ": done!" : dots }</Typography>
-					}
-				</> }
-			</> }
+			<Container>
+				<Typography>To allow access to augmented reality, we need to request access to device orientation, GPS and your device camera.</Typography>
+				<Button 
+					variant="contained" 
+					color="primary"
+					id="request"
+					onClick={ approve }
+				>
+				Proceed?
+				</Button>
+				<p>x: { _.get( deviceOrientation, "x" ) }</p>
+				<br />
+				<p>lat: { _.get( userCoords, "latitude" ) }</p>
+				<p>lng: { _.get( userCoords, "longitude" ) }</p>
+				<p>heading: { _.get( userCoords, "heading" ) }</p>
+				<br />
+				<p>{ camera ? "Has camera" : "Has no camera" }</p>
+			</Container>
+
 			{ ( camera && userCoords && deviceOrientation ) && 
-			// { ( camera ) && 
 				<div className={ classes.container } style={{ zIndex: 30 }}>
 					<Canvas>
 						<ThreeRenderer processedDives={ processedDives } userCoords={ userCoords } deviceOrientation={ deviceOrientation } />
 					</Canvas>
 				</div> 
 			}
-			<div className={ classes.container } style={{ zIndex: 25 }}>
+			<div className={ classes.container } style={{ zIndex: camera ? 25 : -1 }}>
 				<video id="ar-video-playback" autoPlay muted />
 			</div>
 		</div>

@@ -1,15 +1,16 @@
 
 // Packages
 import React, { useEffect, useState, useContext, useRef } from "react";
+import ReactDOMServer from "react-dom/server";
 import PropTypes from "prop-types";
 import _ from "lodash";
 import { IconButton } from "@material-ui/core";
-import { NearMe } from "@material-ui/icons";
-import { makeStyles } from "@material-ui/core/styles";
+import { NearMe, LocationOnRounded } from "@material-ui/icons";
+import { makeStyles, useTheme } from "@material-ui/core/styles";
 import { useHistory } from "react-router-dom";
+import L from "leaflet";
 import { MapContainer, TileLayer, MapConsumer, ScaleControl, Marker, Tooltip, Polygon, Polyline, Circle, CircleMarker } from "react-leaflet";
 import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
-import DivIcon from "leaflet-svgicon";
 import "../../../node_modules/leaflet/dist/leaflet.css";
 import "../../../node_modules/leaflet-geosearch/dist/geosearch.css";
 import "../../css/icomoon-fa-v1.0/style.css";
@@ -17,37 +18,59 @@ import "../../css/icomoon-fa-v1.0/style.css";
 // App
 import { State } from "../";
 
-const useStyles = makeStyles( theme => ({
-	map: {
-		height: "100%", width: "100%",
-		minHeight: "100px",
-	},
-	locationControl: {
-		position: "absolute",
-		top: theme.spacing( 1 ),
-		right: theme.spacing( 1 ),
-		zIndex: 1000,
-		backgroundColor: theme.palette.common.white,
-		borderRadius: theme.spacing( 0.5 ),
-		borderStyle: "solid",
-		borderWidth: 1.8,
-		borderColor: props => props.useGPS ? theme.palette.primary.main : theme.palette.grey[ 400 ],
-		padding: theme.spacing( 0.5 ),
-		"& .MuiSvgIcon-root": {
-			fontSize: "90%",
+const useStyles = makeStyles( theme => {
+	return ({
+		map: {
+			height: "100%", width: "100%",
+			minHeight: "100px",
 		},
-	},
-}));
-
+		locationControl: {
+			position: "absolute",
+			top: theme.spacing( 1 ),
+			right: theme.spacing( 1 ),
+			zIndex: 1000,
+			backgroundColor: theme.palette.common.white,
+			borderRadius: theme.spacing( 0.5 ),
+			borderStyle: "solid",
+			borderWidth: 1.8,
+			borderColor: props => props.useGPS ? theme.palette.primary.main : theme.palette.grey[ 400 ],
+			padding: theme.spacing( 0.5 ),
+			"& .MuiSvgIcon-root": {
+				fontSize: "90%",
+			},
+		},
+		blueIcon: {
+			color: theme.palette.primary.main,
+		},
+		purpleIcon: {
+			color: theme.palette.purple.main,
+		},
+		greenIcon: {
+			color: theme.palette.green.main,
+		},
+	});});
 
 export default function Map ({ allDives }) {
 	const [ useGPS, setUseGPS ] = useState( false );
 
 	const classes = useStyles({ useGPS });
+	const theme = useTheme();
 	const [ state, dispatch ] = useContext( State );	
 	const history = useHistory();
 	
 	const isSmall = _.get( state, "ui.isSmall" );
+	const isAuthenticated = _.get( state, "auth.isAuthenticated" );
+
+	const iconProps = {
+		className: "",
+		iconAnchor: [ 17.5, 35 ],
+	};
+
+	const [ icons ] = useState({
+		blue: L.divIcon({ html: ReactDOMServer.renderToString( <LocationOnRounded fontSize="large" className={ classes.blueIcon } /> ), ...iconProps }),
+		green: L.divIcon({ html: ReactDOMServer.renderToString( <LocationOnRounded fontSize="large" className={ classes.greenIcon } /> ), ...iconProps }),
+		purple: L.divIcon({ html: ReactDOMServer.renderToString( <LocationOnRounded  fontSize="large"className={ classes.purpleIcon } /> ), ...iconProps }),
+	});
 
 	// Location search
 	const [ searchProvider ] = useState( new GeoSearchControl({ 
@@ -87,7 +110,7 @@ export default function Map ({ allDives }) {
 
 	// Edit
 	const view = _.get( state, "explore.view" );
-	const isEditing = view === "add" || view === "edit";
+	const isEditing = isAuthenticated && ( view === "add" || view === "edit" );
 	const isRequesting = _.isFunction( _.get( state, "explore.map.requestFunc" ));
 
 	// Dive markers
@@ -157,7 +180,7 @@ export default function Map ({ allDives }) {
 							return (
 								<Marker 
 									position={[ lat, lng ]} key={ id } 
-									icon={ new DivIcon.SVGIcon({ color: "#035AA6" })}
+									icon={ icons.blue }
 									eventHandlers={{ dblclick: () => history.push( `/explore/${ id }` ) }}
 								>
 									<Tooltip>{ _.get( dive, "name" ) }</Tooltip>
@@ -165,7 +188,7 @@ export default function Map ({ allDives }) {
 							);
 						})}
 						{ ( !_.isEmpty( journeyLatLngs ) && !isFlying ) && <>
-							<Polyline positions={ _.compact( _.concat( journeyLatLngs, _.head( mainLatLngs ))) } color="#9C2BCB" />
+							<Polyline positions={ _.compact( _.concat( journeyLatLngs, _.head( mainLatLngs ))) } color={ theme.palette.purple.light } />
 							{ _.map( journeyLatLngs, ( latLngs, index ) => {
 								const { lat, lng } = latLngs; 
 								return (
@@ -173,7 +196,7 @@ export default function Map ({ allDives }) {
 										key={ index } 
 										position={[ lat, lng ]}
 										draggable={ isEditing }
-										icon={ new DivIcon.SVGIcon({ color: "#9C2BCB" }) }
+										icon={ icons.purple }
 										eventHandlers={ isEditing ? {
 											drag: e => _.throttle(() => {
 												const { lat, lng } = _.get( e, "target._latlng" );
@@ -189,8 +212,8 @@ export default function Map ({ allDives }) {
 						</>
 						}
 						{ ( !_.isEmpty( mainLatLngs ) && !isFlying ) && <>
-							{ diveType === "area" && <Polygon positions={ mainLatLngs } color="#2AAD27" /> }
-							{ diveType === "route" && <Polyline positions={ mainLatLngs } color="#2AAD27" /> }
+							{ diveType === "area" && <Polygon positions={ mainLatLngs } color={ theme.palette.green.light } /> }
+							{ diveType === "route" && <Polyline positions={ mainLatLngs } color={ theme.palette.green.light } /> }
 							{ _.map( mainLatLngs, ( latLngs, index ) => {
 								const { lat, lng } = latLngs; 
 								return (
@@ -198,7 +221,7 @@ export default function Map ({ allDives }) {
 										key={ index } 
 										position={ [ lat, lng ] }
 										draggable={ isEditing }
-										icon={ new DivIcon.SVGIcon({ color: "#2AAD27" }) }
+										icon={ icons.green }
 										eventHandlers={ isEditing ? {
 											drag: e => _.throttle(() => {
 												const { lat, lng } = _.get( e, "target._latlng" );
@@ -222,9 +245,9 @@ export default function Map ({ allDives }) {
 						{ ( userCoords && !isFlying ) && <>
 							<CircleMarker 
 								center={ [ _.get( userCoords, "latitude" ), _.get( userCoords, "longitude" ) ] } 
-								color="#fff"
+								color={ theme.palette.common.white }
 								weight={ 3 }
-								fillColor="#035AA6" 
+								fillColor={ theme.palette.primary.main }  
 								fillOpacity={ 1 } 
 								radius={ 8 } 
 								interactive={ false }
@@ -233,7 +256,7 @@ export default function Map ({ allDives }) {
 								center={ [ _.get( userCoords, "latitude" ), _.get( userCoords, "longitude" ) ] } 
 								radius={ _.get( userCoords, "accuracy" ) } 
 								stroke={ false } 
-								color="#035AA6" 
+								color={ theme.palette.primary.main } 
 								interactive={ false }
 							/>
 						</> }

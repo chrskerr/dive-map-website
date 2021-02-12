@@ -1,9 +1,9 @@
 
 // Packages
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import PropTypes from "prop-types";
 import _ from "lodash";
-import { Button, Paper, Typography, FormControl, FormLabel, RadioGroup, Radio, FormControlLabel } from "@material-ui/core";
+import { Button, Paper, Typography, FormControl, FormLabel, RadioGroup, Radio, FormControlLabel, Tooltip } from "@material-ui/core";
 import { AddRounded } from "@material-ui/icons";
 import { useHistory } from "react-router-dom";
 import { makeStyles } from "@material-ui/core/styles";
@@ -30,8 +30,10 @@ export default function DivesList ({ dives }) {
 
 	const history = useHistory();
 	const [ state, dispatch ] = useContext( State );
+	const [ isTooltipOpen, setIsTooltipOpen ] = useState( false );
 
 	const markerPositionType = _.get( state, "explore.map.markerPositionType" );
+	const isAuthenticated = _.get( state, "auth.isAuthenticated" );
 
 	return <>
 		<div>
@@ -46,7 +48,12 @@ export default function DivesList ({ dives }) {
 			</Paper>
 		</div>
 		<div className={ classes.listItem }>
-			<Button variant='outlined' size="small" fullWidth endIcon={ <AddRounded /> } onClick={ () => history.push( "/explore/add" ) }>Add a New Dive</Button>
+			<Tooltip open={ isTooltipOpen } arrow placement='top' title="You must be logged in to do this">
+				<Button 
+					variant='outlined' size="small" fullWidth endIcon={ <AddRounded /> } 
+					onClick={ () => isAuthenticated ? history.push( "/explore/add" ) : setIsTooltipOpen( e => !e ) }
+				>Add a New Dive</Button>
+			</Tooltip>
 		</div>
 		{ !_.isEmpty( dives ) && _.map( dives, site => {
 			const { id, name, depth } = site;
