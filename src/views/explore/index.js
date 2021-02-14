@@ -1,8 +1,8 @@
 
 // Packages
-import React, { useContext, useEffect, useMemo, useRef } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import _ from "lodash";
-import { gql, useQuery } from "@apollo/client";
+import { gql, useApolloClient, useQuery } from "@apollo/client";
 import { useParams } from "react-router-dom";
 
 // App
@@ -31,10 +31,10 @@ const GET_DIVE = gql`
 export default function Index () {
 	const [ state, dispatch ] = useContext( State );
 	const { dive, action } = useParams();
+	const apolloClient = useApolloClient();
 	
 	const map = _.get( state, "explore.map.map" );
 	const view = _.get( state, "explore.view" );
-	const prevView = useRef();
 
 	useEffect(() => {
 		if ( dive === "add" ) { 
@@ -44,25 +44,40 @@ export default function Index () {
 			if ( view !== "viewAll" ) dispatch({ type: "explore.setView", view: "viewAll" });
 		}
 		else if ( action === "edit" ) {
-			if ( view !== "edit" ) dispatch({ type: "explore.setView", view: "edit" });
+			if ( view !== "edit" ) {
+				dispatch({ type: "explore.setView", view: "edit" });
+				getDive( dive );
+			}
 		}
 		else if ( action === "history" ) {
 			if ( view !== "history" ) dispatch({ type: "explore.setView", view: "history" });
 		}
 		else if ( dive ) {
-			if ( view !== "viewOne" ) dispatch({ type: "explore.setView", view: "viewOne" });
+			if ( view !== "viewOne" ) { 
+				dispatch({ type: "explore.setView", view: "viewOne" });
+				getDive( dive );
+			}
 		}
 
 		if ( !dive && action ) history.push( "/explore" );
 	}, [ dive, action, view ]);
 
-	const mainLatlngs = _.get( state, "explore.dive.coords.main[0]" );
+	const [ routeChangeFly, setRouteChangeFly ] = useState( false );
+	const getDive = async dive => {
+		const data = await apolloClient.query({ query: GET_DIVE, variables: { id: dive }});
+		
+		const diveData = _.omit( _.get( data, "data.dives_by_pk" ), "__typename" );
+		dispatch({ type: "explore.updateDive", dive: diveData });
+
+		setRouteChangeFly( _.get( diveData, "coords.main[0]" ));
+	};
+
 	useEffect(() => {
-		if ( map && !_.isEmpty( mainLatlngs ) && ( view === "viewOne" || view === "edit" )) { 
-			if ( view ==="viewOne" || ( view === "edit" && prevView.current !== "edit" )) dispatch({ type: "map.fly", latlngs: mainLatlngs, zoom: 14 });
-			prevView.current = view;
+		if ( map && routeChangeFly ) {
+			dispatch({ type: "map.fly", latlngs: routeChangeFly, zoom: 17 });
+			setRouteChangeFly( false );
 		}
-	}, [ mainLatlngs, map, view ]);
+	}, [ map, routeChangeFly ]);
 
 	const { data: allDivesData } = useQuery( GET_DIVES, { fetchPolicy: "cache-and-network" });
 	const dives = _.get( allDivesData, "dives" );
@@ -75,18 +90,6 @@ export default function Index () {
 		if ( !lat || !lng || _.isEmpty( bounds )) return false;
 		else return lat > bounds.lat0 && lat < bounds.lat1 && lng > bounds.lng0 && lng < bounds.lng1;
 	}), [ bounds, dives ]);
-
-	const { data: oneDiveData } = useQuery( GET_DIVE, { variables: { id: dive }, skip: !dive });
-	const diveData = _.omit( _.get( oneDiveData, "dives_by_pk" ), "__typename" );
-
-	const currentDive = _.get( state, "explore.dive" );
-	const isEditing = view === "add" || view === "edit";
-
-	useEffect(() => {
-		if ( !isEditing && !_.isEmpty( diveData ) && !_.isEqual( diveData, currentDive )) {
-			dispatch({ type: "explore.updateDive", dive: diveData });
-		}
-	}, [ diveData ]);
 
 	return <Explore dives={ filteredDiveSites } />;
 }

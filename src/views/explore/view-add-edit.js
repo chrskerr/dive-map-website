@@ -89,17 +89,17 @@ export default function ViewAddEdit () {
 
 	const formik = useFormik({
 		initialValues: view === "add" ? 
-			{ name: "", description: "", dive_plan: "", depth: 0, type: "route", coords } :
-			{ name, description, dive_plan, depth, type, coords },
+			{ name: "", description: "", dive_plan: "", depth: 0, type: "route" } :
+			{ name, description, dive_plan, depth, type },
 		validationSchema: validationSchema,
 		enableReinitialize: true,
-		onSubmit: async ( values, { setFieldError }) => {
+		onSubmit: async ( data, { setFieldError }) => {
 			try {
-
 				if ( _.isEmpty( mainCoords )) throw Error({ message: "At least one waypoint must be selected" });
 
-				const id = diveId || `${ _.get( mainCoords, "lat" ) }-${ _.get( mainCoords, "lng" ) }-${ _.kebabCase( _.get( values, "name" )) }`;
+				const id = diveId === "add" ? "" : diveId || `${ _.get( mainCoords, "lat" ) }-${ _.get( mainCoords, "lng" ) }-${ _.kebabCase( _.get( values, "name" )) }`;
 
+				const values = { ...data, coords };
 				const changes = view === "add" ? values : _.reduce( values, ( curr, val, key ) => {
 					return val !== _.get( dive, key ) ? { ...curr, [ key ]: val } : curr;
 				}, {});
@@ -118,11 +118,7 @@ export default function ViewAddEdit () {
 
 	const _return = () => {
 		if ( view === "edit" ) history.push( `/explore/${ diveId }` );
-		else {
-			history.push( "/explore" );
-			const map = _.get( state, "explore.map.map" );
-			dispatch({ type: "map.fly", latlngs: map.getCenter(), zoom: 9 });
-		}
+		else history.push( "/explore" );
 
 		formik.resetForm();
 	};
@@ -145,12 +141,10 @@ export default function ViewAddEdit () {
 	return (
 		<form onSubmit={ formik.handleSubmit }>
 			<Grid container spacing={ 3 } className={ classes.gridContainer }>
-				<Grid item xs={ 3 }>
+				<Grid item xs={ 6 }>
 					<Button variant="outlined" fullWidth size="small" startIcon={ <ChevronLeftRounded /> } onClick={ _return }>{ view === "viewOne" ? "Return" : "Cancel" }</Button>
 				</Grid>
 				<Grid item xs={ 6 }>
-				</Grid>
-				<Grid item xs={ 3 }>
 					{ view === "viewOne" && 
 						<Tooltip open={ isTooltipOpen } placement="left" arrow title="You must be logged in to do this">
 							<Button variant="outlined" fullWidth size="small" onClick={ _edit }>Edit</Button>
@@ -251,7 +245,6 @@ export default function ViewAddEdit () {
 				</Grid>
 
 				{ ( view === "edit" || view === "add" ) && <>
-					{/* Add Marker Buttons */}
 					{ _.map([ "journey", "main" ], type => {
 						return ( 
 							<Grid item xs={ 6 } key={ type }>

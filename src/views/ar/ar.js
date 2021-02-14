@@ -1,10 +1,12 @@
 
 // Packages
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import PropTypes from "prop-types";
 import { gql, useQuery } from "@apollo/client";
 import _ from "lodash";
-import { Container, Button, Typography } from "@material-ui/core";
-import { makeStyles } from "@material-ui/core/styles";
+import { Container, ButtonGroup, Button, Typography } from "@material-ui/core";
+import { makeStyles, useTheme } from "@material-ui/core/styles";
+import { AutorenewRounded, ChevronRight } from "@material-ui/icons";
 import { Canvas } from "react-three-fiber";
 import { Haversine } from "haversine-position";
 
@@ -29,6 +31,26 @@ const useClasses = makeStyles( theme => ({
 		justifyContent: "center",
 		alignItems: "center",
 	},
+	locationAccuracy: {
+		position: "absolute",
+		top: theme.spacing( 1 ),
+		right: theme.spacing( 1 ),
+		padding: theme.spacing( 1 ),
+		backgroundColor: theme.palette.common.white,
+		color: theme.palette.common.black,
+		zIndex: 35,
+	},
+	spinner: {
+		animation: "$rotation 2s infinite linear",
+	},
+	"@keyframes rotation": {
+		from: {
+			transform: "rotate(0deg)",
+		},
+		to: {
+			transform: "rotate(359deg)",
+		},
+	},
 }));
 
 const GET_DIVES = gql`
@@ -41,93 +63,169 @@ const GET_DIVES = gql`
 	}
 `;
 
-export default function AR () {
+export default function ARContainer () {
 	const classes = useClasses();
 	const $_root = useRef();
 
-	// Device Orientation
-	const [ deviceOrientation, setDeviceOrientation ] = useState( true );
-	const _handleDeviceOrientation = e => {
-		const x = _.round( e.beta, 0 );
-		if ( x !== _.get( deviceOrientation, "x" ))setDeviceOrientation({ x });
-	};
+	const [ isReadyToRender, setIsReadyToRender ] = useState( false );
 
-	const approve = async () => {
-		if ( window.DeviceOrientationEvent ) {
-			if ( _.isFunction( window.DeviceOrientationEvent.requestPermission )) {
-				window.DeviceOrientationEvent.requestPermission()
-					.then( res => {
-						if ( res === "granted" ) window.addEventListener( "deviceorientation", _handleDeviceOrientation, false );
-					})
-					.catch( console.error );
-			}
-			else window.addEventListener( "deviceorientation", _handleDeviceOrientation, false );
-		}
-		else alert( "I'm sorry, but your browser won't support augmented reality" );
-	};
-	useEffect(() => {
-		return () => window.removeEventListener( "deviceorientation", _handleDeviceOrientation );
-	}, []);
-
-	// GPS
-	const [ userCoords, setUserCoords ] = useState( false );
-	const [ geoId, setGeoId ] = useState( false );
-	const [ geoError, setGeoError ] = useState( false );
-
-	useEffect(() => {
-		let id;
-		if ( navigator.geolocation && deviceOrientation && !geoId ) {
-			id = navigator.geolocation.watchPosition(
-				({ coords }) => setUserCoords( coords ),
-				() => setGeoError( true ), 
-				{ enableHighAccuracy: true },
-			);
-			setGeoId( id );
-		}
-		else setGeoError( true );
-
-		return () => { 
-			if ( id ) navigator.geolocation.clearWatch( id );
-		};
-	}, [ deviceOrientation ]);
-	useEffect(() => {
-		if ( geoError ) {
-			navigator.geolocation.clearWatch( geoId );
-			setGeoId( false );
-		}
-	}, [ geoError ]);
-
-	// Camera
+	// Camera State
 	const [ camera, setCamera ] = useState( false );
+	const [ cameraError, setCameraError ] = useState( false );
+	const [ isCameraLoading, setIsCameraLoading ] = useState( false );
 	const mediaConstraints = { 
 		height: _.get( $_root, "current.offsetHeight" ),
 		width: _.get( $_root, "current.offsetWidth" ),
-		facingMode: { ideal: "environment" },
+		facingMode: { exact: "environment" },
 	};
 
-	useEffect(() => {
-		let stream = camera;
-		if ( !stream && userCoords ) {
-			( async () => {
-				stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: mediaConstraints });
-				document.getElementById( "ar-video-playback" ).srcObject = stream;
-				setCamera( stream );
-			})();
+	const approveCamera = async () => {
+		setIsCameraLoading( true );
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: mediaConstraints });
+			document.getElementById( "ar-video-playback" ).srcObject = stream;
+			setCamera( stream );
 		}
+		catch ( err ) {
+			console.error( err );
+			setCameraError( true );
+		}
+		setIsCameraLoading( false );
+	};
 
-		return () => {
-			if ( stream ) _.forEach( stream.getTracks(), track => track.stop());
-		};
-	}, [ userCoords, camera ]);
-	
+	// Handle changes to constraints and page sizing
 	useEffect(() => {
 		if ( camera ) _.forEach( camera.getTracks(), track => track.applyConstraints( mediaConstraints ));
 	}, [ mediaConstraints ]);
 
+	return (
+		<div className={ classes.root } ref={ $_root }>
+			<AR 
+				approveCamera={ approveCamera } 
+				emit={ setIsReadyToRender }
+				camera={ camera }
+				cameraError={ cameraError }
+				setCamera={ setCamera }
+				isCameraLoading={ isCameraLoading }
+			/>
+			<div className={ classes.container } style={{ zIndex: isReadyToRender ? 25 : -1 }}>
+				{ $_root && 
+					<video 
+						id="ar-video-playback" 
+						autoPlay 
+						muted 
+						playsInline
+						height={ _.get( $_root, "current.offsetHeight" ) } 
+						width={ _.get( $_root, "current.offsetWidth" ) }
+					/> 
+				}
+			</div>
+		</div>
+	);
+}
 
-	// Dive Data
-	const userLat = _.get( userCoords, "latitude" );
-	const userLng = _.get( userCoords, "longitude" );
+function AR ({ approveCamera, emit, camera, cameraError, setCamera, isCameraLoading }) {
+	const classes = useClasses();
+	const theme = useTheme();
+
+	// Device Orientation State
+	const [ deviceOrientation, setDeviceOrientation ] = useState( false );
+	const [ deviceOrientationError, setDeviceOrientationError ] = useState( false );
+	const _handleDeviceOrientation = e => _.throttle(() => {
+		const x = _.round( _.get( e, "beta" ), 1 ); 
+		const z = _.round( _.get( e, "alpha" ), 1 ); 
+		const y = _.round( _.get( e, "gamma" ), 1 );
+		const webkitCompassHeading = _.round( _.get( e, "webkitCompassHeading" ) , 1 );
+		const absolute = _.round( _.get( e, "absolute" ), 1 );
+
+		if ( 
+			x !== _.get( deviceOrientation, "x" ) || 
+			z !== _.get( deviceOrientation, "z" ) || 
+			y !== _.get( deviceOrientation, "y" ) ||
+			webkitCompassHeading !== _.get( deviceOrientation, "webkitCompassHeading" ) ||
+			absolute !== _.get( deviceOrientation, "absolute" )
+		) {
+			setDeviceOrientation({ x, z, y, webkitCompassHeading, absolute });
+		}
+	}, 50 )();
+	const [ isOrientationLoading, setIsOrientationLoading ] = useState( false );
+
+
+	// GPS State
+	const [ userCoords, setUserCoords ] = useState( false );
+	const [ geoId, setGeoId ] = useState( false );
+	const [ geoError, setGeoError ] = useState( false );
+	const [ isGeoLoading, setIsGeoLoading ] = useState( false );
+	const locationAccuracy = _.get( userCoords, "accuracy" );
+
+	console.log( userCoords, locationAccuracy );
+
+	// Approve Function
+	const approveOrientation = async () => {
+		setIsOrientationLoading( true );		
+		if ( window.DeviceOrientationEvent ) {
+			if ( _.isFunction( window.DeviceOrientationEvent.requestPermission )) {
+				try {
+					const res = await window.DeviceOrientationEvent.requestPermission();
+					if ( res === "granted" ) window.addEventListener( "deviceorientation", _handleDeviceOrientation, true );
+					setIsOrientationLoading( false );
+				}
+				catch ( err ) {
+					console.error( err );
+					setDeviceOrientationError( true );
+					setIsOrientationLoading( false );
+				}
+			}
+			else {
+				window.addEventListener( "deviceorientation", _handleDeviceOrientation, true );
+				setIsOrientationLoading( false );
+			}
+		}
+		else {
+			setDeviceOrientationError( true );
+			setIsOrientationLoading( false );
+			alert( "I'm sorry, but your browser won't support augmented reality" );
+		}
+	};
+
+	const approveGPS = () => {
+		setIsGeoLoading( true );			
+		if ( navigator.geolocation ) {
+			setGeoId( navigator.geolocation.watchPosition(
+				({ coords }) => setUserCoords( coords ),
+				() => setGeoError( true ), 
+				{ enableHighAccuracy: true },
+			));
+		}
+		else setGeoError( true );
+		setIsGeoLoading( false );
+	};
+
+	// Handle errors
+	useEffect(() => {
+		if ( geoError || deviceOrientationError || cameraError ) {
+			window.removeEventListener( "deviceorientation", _handleDeviceOrientation );
+			setIsOrientationLoading( false );
+		}
+	}, [ geoError, deviceOrientationError, cameraError ]);
+
+	useEffect(() => {
+		if (( geoError || deviceOrientationError || cameraError ) && camera ) {
+			_.forEach( camera.getTracks(), track => track.stop());
+			setCamera( false );
+		}
+	}, [ geoError, deviceOrientationError, cameraError, camera ]);
+
+	useEffect(() => {
+		if (( geoError || deviceOrientationError || cameraError ) && geoId ) {
+			navigator.geolocation.clearWatch( geoId );
+			setGeoId( false );
+		}
+	}, [ geoError, deviceOrientationError, cameraError, geoId ]);
+
+	// Create Dive Marker Data
+	const userLat = _.get( userCoords, "latitude" ); -41.32668851459069;
+	const userLng = _.get( userCoords, "longitude" ); 148.24843379660553;
 	const [ metresPerDegree, setMetresPerDegree ] = useState({ lat: null, lng: null });
 
 	useEffect(() =>{ 
@@ -141,14 +239,15 @@ export default function AR () {
 	const { data: allDivesData } = useQuery( GET_DIVES, { fetchPolicy: "cache-and-network" });
 	const dives = _.get( allDivesData, "dives" );
 
-	const processedDives = useMemo(() => _.compact( _.map( dives, ({ coords, type }) => {
+	const processedDives = useMemo(() => _.compact( _.map( dives, dive => {
 		if ( !userLat || !userLng || !metresPerDegree.lat || !metresPerDegree.lng ) return;
 
+		const { coords, type } = dive;
 		const main = _.get( coords, "main" );
-		const x = ( userLng - _.get( main, "[0].lat" )) * metresPerDegree.lat;
-		const z = ( _.get( main, "[0].lng" ) - userLng ) * metresPerDegree.lng;
+		const x = Math.abs( userLat - _.get( main, "[0].lat" )) * metresPerDegree.lat;
+		const z = Math.abs( _.get( main, "[0].lng" ) - userLng ) * metresPerDegree.lng;
 
-		if ( x > 150 || z > 150 ) return false;
+		if ( x > 250 || z > 250 ) return false;
 
 		return {
 			type,
@@ -161,37 +260,79 @@ export default function AR () {
 		};
 	})), [ dives, userLat, userLng ]);
 
+	// Cleanup
+	useEffect(() => {
+		return () => {
+			window.removeEventListener( "deviceorientation", _handleDeviceOrientation );
+			if ( geoId ) navigator.geolocation.clearWatch( geoId );
+			if ( camera ) _.forEach( camera.getTracks(), track => track.stop());
+		};
+	}, [ geoId, camera ]);
+
+	const isReadyToRender = camera && userCoords && deviceOrientation;
+
+	useEffect(() => {
+		emit( isReadyToRender );
+	}, [ isReadyToRender ]);
+
 	return (
-		<div className={ classes.root } ref={ $_root }>
+		<>
 			<Container>
 				<Typography>To allow access to augmented reality, we need to request access to device orientation, GPS and your device camera.</Typography>
-				<Button 
-					variant="contained" 
-					color="primary"
-					id="request"
-					onClick={ approve }
-				>
-				Proceed?
-				</Button>
-				<p>x: { _.get( deviceOrientation, "x" ) }</p>
-				<br />
-				<p>lat: { _.get( userCoords, "latitude" ) }</p>
-				<p>lng: { _.get( userCoords, "longitude" ) }</p>
-				<p>heading: { _.get( userCoords, "heading" ) }</p>
-				<br />
-				<p>{ camera ? "Has camera" : "Has no camera" }</p>
+				<ButtonGroup orientation="vertical" color="primary">
+					<Button 
+						variant="contained" 
+						id="request"
+						onClick={ approveOrientation }
+						disabled={ isOrientationLoading || deviceOrientation }
+						endIcon={ isOrientationLoading ? <AutorenewRounded className={ classes.spinner } /> : <ChevronRight /> }
+					>
+					Approve Device Orientation
+					</Button>
+					<Button 
+						variant="contained" 
+						id="request"
+						onClick={ approveGPS }
+						disabled={ isGeoLoading || !deviceOrientation || deviceOrientationError || geoId }
+						endIcon={ isGeoLoading ? <AutorenewRounded className={ classes.spinner } /> : <ChevronRight /> }
+					>
+					Approve GPS
+					</Button>
+					<Button 
+						variant="contained" 
+						id="request"
+						onClick={ approveCamera }
+						disabled={ isCameraLoading || !geoId || geoError || !deviceOrientation || deviceOrientationError || camera }
+						endIcon={ isCameraLoading ? <AutorenewRounded className={ classes.spinner } /> : <ChevronRight /> }
+					>
+					Approve Camera
+					</Button>
+				</ButtonGroup>
 			</Container>
+			<div className={ classes.container } style={{ zIndex: isReadyToRender ? 30 : -1 }}>
+				{ locationAccuracy && <div className={ classes.locationAccuracy }>GPS Accuracy: { locationAccuracy }m</div>}
 
-			{ ( camera && userCoords && deviceOrientation ) && 
-				<div className={ classes.container } style={{ zIndex: 30 }}>
-					<Canvas>
-						<ThreeRenderer processedDives={ processedDives } userCoords={ userCoords } deviceOrientation={ deviceOrientation } />
-					</Canvas>
-				</div> 
-			}
-			<div className={ classes.container } style={{ zIndex: camera ? 25 : -1 }}>
-				<video id="ar-video-playback" autoPlay muted />
-			</div>
-		</div>
+				<Canvas>
+					{/* { ( !_.isEmpty( processedDives ) && userCoords && deviceOrientation ) &&  */}
+					<ThreeRenderer 
+						processedDives={ processedDives } 
+						deviceOrientation={ deviceOrientation }
+						theme={ theme }
+					/>
+					{/* } */}
+				</Canvas>
+			</div> 
+		</>
 	);
 }
+AR.propTypes = {
+	approveCamera: PropTypes.func,
+	camera: PropTypes.oneOfType([ 
+		PropTypes.bool, 
+		PropTypes.object,
+	]),
+	emit: PropTypes.func,
+	setCamera: PropTypes.func,
+	cameraError: PropTypes.bool,
+	isCameraLoading: PropTypes.bool,
+};

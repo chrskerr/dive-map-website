@@ -1,10 +1,13 @@
 
 // Packages
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import PropTypes from "prop-types";
 import _ from "lodash";
 import { makeStyles } from "@material-ui/core/styles";
 import { useSpring, animated as a, config } from "react-spring";
+import { Tooltip, IconButton } from "@material-ui/core";
+import { AddRounded } from "@material-ui/icons";
+import { useHistory } from "react-router-dom";
 
 // App
 import { State } from "../";
@@ -27,15 +30,33 @@ const useStyles = makeStyles( theme => ({
 		overflowX: "hidden",
 		height: "100%",
 	},
+	addButton: {
+		position: "absolute",
+		bottom: theme.spacing( 3 ),
+		right: theme.spacing( 2 ),
+		zIndex: 1000,
+		backgroundColor: theme.palette.common.white,
+		borderRadius: theme.spacing( 0.5 ),
+		borderStyle: "solid",
+		borderWidth: 1.8,
+		borderColor: theme.palette.grey[ 400 ],
+		padding: theme.spacing( 0.5 ),
+		"& .MuiSvgIcon-root": {
+			fontSize: "90%",
+		},
+	},
 }));
 
 export default function Explore ({ dives }) {
 	const classes = useStyles();
+	const history = useHistory();
+	const [ isTooltipOpen, setIsTooltipOpen ] = useState( false );
 	
 	const [ state ] = useContext( State );
 	const view = _.get( state, "explore.view" );
 	const map = _.get( state, "explore.map.map" );
 	const size = _.get( state, "ui.isSmall" ) ? "small" : "large"; 
+	const isAuthenticated = _.get( state, "auth.isAuthenticated" );
 
 	const paneOneProps = useSpring({ 
 		...getProps( size, view, "one" ),
@@ -66,6 +87,16 @@ export default function Explore ({ dives }) {
 					{ view === "edit" ? <p>Edit a dive</p> : <p>View dive edit history</p> }
 				</div>
 			</a.div>
+			{ ( size ==="small" && view === "viewAll" ) && <div className={ classes.addButton }>
+				<Tooltip open={ isTooltipOpen } arrow placement='top' title="You must be logged in to do this">
+					<IconButton 
+						variant='outlined' size="small" aria-label="add new dive"
+						onClick={ () => isAuthenticated ? history.push( "/explore/add" ) : setIsTooltipOpen( e => !e ) }
+					>
+						<AddRounded />
+					</IconButton>
+				</Tooltip>
+			</div> }
 		</div>
 	</> );
 }

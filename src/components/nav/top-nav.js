@@ -3,7 +3,7 @@
 import React, { useState, useContext } from "react";
 import _ from "lodash";
 import { useHistory, useLocation } from "react-router-dom";
-import { AppBar, Toolbar, IconButton, Typography, Drawer, List, ListItem, ListItemAvatar, ListItemText, Modal, Paper } from "@material-ui/core";
+import { AppBar, Toolbar, IconButton, Typography, Drawer, List, ListItem, ListItemAvatar, ListItemText, Slide, Dialog, DialogContent } from "@material-ui/core";
 import { MenuOutlined, AssignmentIndOutlined, HomeOutlined, ExploreOutlined, PhotoCameraOutlined } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
 
@@ -33,14 +33,8 @@ const useStyles = makeStyles( theme => ({
 	listItem: {
 		width: "16rem",
 	},
-	modal: {
-		position: "absolute",
-		top: "20%",
-		left: "30%",
-		right: "30%",
-	},
-	paper: {
-		padding: "2rem 3rem",
+	dialogContent: {
+		padding: theme.spacing( 3 ),
 	},
 	link: {
 		cursor: "pointer",
@@ -135,16 +129,23 @@ export default function TopNav () {
 				</List>
 			</Drawer>
 
-			<Modal
-				open={ isModalOpen } 
-				onClose={ () => setIsModalOpen( false ) }	
+			<Dialog
+				open={ isModalOpen }
+				TransitionComponent={ Transition }
+				keepMounted
+				onClose={ () => setIsModalOpen( false ) }
+				aria-labelledby="dialog-sign-in-sign-up"
+				aria-describedby="dialog-sign-in-sign-up"
 			>
-				<div className={ classes.modal }>
-					<Paper className={ classes.paper }>
-						<AuthComponent closeModal={ () => setIsModalOpen( false ) } />
-					</Paper>
-				</div>
-			</Modal>
+				<DialogContent className={ classes.dialogContent }>
+					<AuthComponent closeModal={ () => setIsModalOpen( false ) } />
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }
+
+const Transition = React.forwardRef( function Transition( props, ref ) {
+	return <Slide direction="up" ref={ref} {...props} />;
+});
+  
