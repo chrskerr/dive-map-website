@@ -11,7 +11,7 @@ import { Canvas } from "react-three-fiber";
 import { Haversine } from "haversine-position";
 
 // App
-import ThreeRenderer from "./renderer";
+import { Entities, Camera } from "./renderer";
 
 const useClasses = makeStyles( theme => ({
 	root: {
@@ -77,6 +77,7 @@ export default function ARContainer () {
 		height: _.get( $_root, "current.offsetHeight" ),
 		width: _.get( $_root, "current.offsetWidth" ),
 		facingMode: { exact: "environment" },
+		resizeMode: { ideal: "crop-and-scale" },
 	};
 
 	const approveCamera = async () => {
@@ -158,8 +159,6 @@ function AR ({ approveCamera, emit, camera, cameraError, setCamera, isCameraLoad
 	const [ isGeoLoading, setIsGeoLoading ] = useState( false );
 	const locationAccuracy = _.get( userCoords, "accuracy" );
 
-	console.log( userCoords, locationAccuracy );
-
 	// Approve Function
 	const approveOrientation = async () => {
 		setIsOrientationLoading( true );		
@@ -194,7 +193,11 @@ function AR ({ approveCamera, emit, camera, cameraError, setCamera, isCameraLoad
 			setGeoId( navigator.geolocation.watchPosition(
 				({ coords }) => setUserCoords( coords ),
 				() => setGeoError( true ), 
-				{ enableHighAccuracy: true },
+				{ 
+					enableHighAccuracy: true,
+					timeout: 500,
+					maximumAge: 500,
+				},
 			));
 		}
 		else setGeoError( true );
@@ -224,8 +227,8 @@ function AR ({ approveCamera, emit, camera, cameraError, setCamera, isCameraLoad
 	}, [ geoError, deviceOrientationError, cameraError, geoId ]);
 
 	// Create Dive Marker Data
-	const userLat = _.get( userCoords, "latitude" ); -41.32668851459069;
-	const userLng = _.get( userCoords, "longitude" ); 148.24843379660553;
+	const userLat = _.get( userCoords, "latitude" ) || -42.009876131256654;
+	const userLng = _.get( userCoords, "longitude" ) || 148.24154909705484;
 	const [ metresPerDegree, setMetresPerDegree ] = useState({ lat: null, lng: null });
 
 	useEffect(() =>{ 
@@ -258,7 +261,7 @@ function AR ({ approveCamera, emit, camera, cameraError, setCamera, isCameraLoad
 				}));
 			}),
 		};
-	})), [ dives, userLat, userLng ]);
+	})), [ dives, userLat, userLng, metresPerDegree ]);
 
 	// Cleanup
 	useEffect(() => {
@@ -310,16 +313,24 @@ function AR ({ approveCamera, emit, camera, cameraError, setCamera, isCameraLoad
 				</ButtonGroup>
 			</Container>
 			<div className={ classes.container } style={{ zIndex: isReadyToRender ? 30 : -1 }}>
-				{ locationAccuracy && <div className={ classes.locationAccuracy }>GPS Accuracy: { locationAccuracy }m</div>}
+				{ locationAccuracy && 
+				<div className={ classes.locationAccuracy }>
+					<p>GPS Accuracy: { locationAccuracy }m</p>
+					{ geoId && <p>Geo ID</p> }
+					{ geoError && <p>Geo error</p> }
+					{ cameraError && <p>Camera error</p> }
+					{ deviceOrientationError && <p>Orientation error</p> }
+				</div>
+				}
 
 				<Canvas>
-					{/* { ( !_.isEmpty( processedDives ) && userCoords && deviceOrientation ) &&  */}
-					<ThreeRenderer 
+					{/* { ( !_.isEmpty( processedDives ) && userCoords && deviceOrientation ) && <> */}
+					<Entities 
 						processedDives={ processedDives } 
-						deviceOrientation={ deviceOrientation }
 						theme={ theme }
 					/>
-					{/* } */}
+					<Camera deviceOrientation={ deviceOrientation } />
+					{/* </> } */}
 				</Canvas>
 			</div> 
 		</>

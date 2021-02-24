@@ -97,12 +97,12 @@ export default function ViewAddEdit () {
 			try {
 				if ( _.isEmpty( mainCoords )) throw Error({ message: "At least one waypoint must be selected" });
 
-				const id = diveId === "add" ? "" : diveId || `${ _.get( mainCoords, "lat" ) }-${ _.get( mainCoords, "lng" ) }-${ _.kebabCase( _.get( values, "name" )) }`;
-
 				const values = { ...data, coords };
 				const changes = view === "add" ? values : _.reduce( values, ( curr, val, key ) => {
 					return val !== _.get( dive, key ) ? { ...curr, [ key ]: val } : curr;
 				}, {});
+
+				const id = diveId === "add" ? `${ _.get( mainCoords, "lat" ) }-${ _.get( mainCoords, "lng" ) }-${ _.kebabCase( _.get( values, "name" )) }` : diveId;
 
 				await insertDiveRevision({ variables: { id, changes, dive: _.pick( dive, [ "name", "depth", "description", "dive_plan", "type", "coords" ]) }});
 				

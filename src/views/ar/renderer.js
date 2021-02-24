@@ -1,6 +1,6 @@
 
 // Packages
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import _ from "lodash";
 import * as THREE from "three";
@@ -8,11 +8,104 @@ import { useThree } from "react-three-fiber";
 
 // App
 
-const ThreeRenderer = React.memo( function ThreeRenderer ({ processedDives, deviceOrientation, theme }) {
-	const { camera } = useThree();
+const Entities = React.memo( function Entities ({ processedDives, theme }) {
+	const resources = useRef([]);
+	const trackResource = resource => {
+		if ( _.get( resource, "dispose" )) resources.current.push( resource );
+		return resource;
+	};
 
-	// const [ rotationIntervalId, setRotationIntervalId ] = useState( false );
-	const [ meshYRotationDegrees ] = useState( 0 );
+	console.log( resources.current );
+	console.log( processedDives );
+
+	_.forEach( resources.current, resource => {
+		try {
+			const dispose = _.get( resource, "dispose" );
+			console.log( dispose );
+			if ( dispose && _.isFunction( dispose )) dispose();
+		}
+		catch ( err ) {
+			console.error( err );
+		}
+	});
+
+	resources.current = [];
+
+	const mainMarkers = _.compact( _.flatMap( processedDives, "coords.main" ));
+	const journeyMarkers = _.compact( _.flatMap( processedDives, "coords.journey" ));
+	
+	const areas = _.compact( _.map( _.filter( processedDives, { type: "area" }), "coords.main" ));
+	const routes = _.compact( _.map( _.filter( processedDives, { type: "route" }), dive => {
+		const coords = _.get( dive, "coords.main" );
+
+		const starting = _.head( coords );
+		const startingX = _.get( starting, "x" );
+		const startingZ = _.get( starting, "z" );
+
+		const points = _.map( coords, point => new THREE.Vector3( point.x - startingX, 0, point.z - startingZ ));
+		const lineGeometry = trackResource( new THREE.BufferGeometry().setFromPoints( points ));
+
+		return { lineGeometry, start: [ startingX, -1, startingZ ]};
+	}));
+
+	const journeys = _.compact( _.map( _.filter( processedDives, { type: "route" }), dive => {
+		const coords = _.compact( _.concat( _.get( dive, "coords.journey" ), _.get( dive, "coords.main[0]" )));
+
+		const starting = _.head( coords );
+		const startingX = _.get( starting, "x" );
+		const startingZ = _.get( starting, "z" );
+
+		const points = _.map( coords, point => new THREE.Vector3( point.x - startingX, 0, point.z - startingZ ));
+		const lineGeometry = trackResource( new THREE.BufferGeometry().setFromPoints( points ));
+
+		return { lineGeometry, start: [ startingX, -1, startingZ ]};
+	}));
+
+	console.log( journeys );
+
+	return <>
+		<pointLight position={[ 5, 5, 5 ]} />
+		{ !_.isEmpty( mainMarkers ) && _.map( mainMarkers, ({ x, z }, i ) => (
+			<mesh key={ i } visible position={[ x, -1, z ]}> 
+				<octahedronGeometry />
+				<meshStandardMaterial color={ theme.palette.green.main } />
+			</mesh>
+		)) }
+		{ !_.isEmpty( journeyMarkers ) && _.map( journeyMarkers, ({ x, z }, i ) => (
+			<mesh key={ i } visible position={[ x, -1, z ]}>
+				<octahedronGeometry />
+				<meshStandardMaterial color={ theme.palette.purple.main } emissiveIntensity={ 0.25 } roughness={ 0.8 } />
+			</mesh>
+		)) }
+		{ !_.isEmpty( routes ) && _.map( routes, ({ lineGeometry, start } , i ) => {
+			return (
+				<group position={ start } key={ i }>
+					<line geometry={ lineGeometry }>
+						<lineBasicMaterial attach="material" color={ theme.palette.green.main } />
+					</line>
+				</group>
+			);
+		})}
+		{ !_.isEmpty( journeys ) && _.map( journeys, ({ lineGeometry, start } , i ) => {
+			return (
+				<group position={ start } key={ i }>
+					<line geometry={ lineGeometry }>
+						<lineBasicMaterial attach="material" color={ theme.palette.purple.main } />
+					</line>
+				</group>
+			);
+		})}
+		{ !_.isEmpty( areas ) && null }
+	</>;
+});
+Entities.propTypes = {
+	processedDives: PropTypes.array,
+	theme: PropTypes.object,
+};
+
+
+const Camera = React.memo( function Camera ({ deviceOrientation }) {
+	const { camera } = useThree();
 
 	useEffect(() => {
 		const isAbolute = _.get( deviceOrientation, "absolute" );
@@ -41,7 +134,7 @@ const ThreeRenderer = React.memo( function ThreeRenderer ({ processedDives, devi
 	
 			const tilt = _.get( deviceOrientation, "x" ) - 90;
 			z = Math.sin( toRadians( y )) * tilt * -1;
-			x = Math.cos( toRadians( y )) * tilt; 
+			x = Math.cos( toRadians( y )) * tilt * -1; 
 
 		}
 
@@ -50,91 +143,15 @@ const ThreeRenderer = React.memo( function ThreeRenderer ({ processedDives, devi
 		if ( z ) camera.rotation.z = toRadians( z );
 	}, [ deviceOrientation ]);
 
-	const mainMarkers = useMemo(() => _.compact( _.flatMap( processedDives, "coords.main" )), [ processedDives ]);
-	const journeyMarkers = useMemo(() => _.compact( _.flatMap( processedDives, "coords.journey" )), [ processedDives ]);
-	
-	const areas = useMemo(() => _.compact( _.map( _.filter( processedDives, { type: "area" }), "coords.main" )), [ processedDives ]);
-	const routes = useMemo(() => _.compact( _.map( _.filter( processedDives, { type: "route" }), dive => {
-		const coords = _.get( dive, "coords.main" );
-
-		const starting = _.head( coords );
-		const startingX = _.get( starting, "x" );
-		const startingZ = _.get( starting, "z" );
-
-		const points = _.map( coords, point => new THREE.Vector3( point.x - startingX, 0, point.z - startingZ ));
-
-		return {
-			lineGeometry: new THREE.BufferGeometry().setFromPoints( points ),
-			start: [ startingX, -1, startingZ ],
-		};
-	})), [ processedDives ]);
-
-	const journeys = useMemo(() => _.compact( _.map( _.filter( processedDives, { type: "route" }), dive => {
-		const coords = _.compact( _.concat( _.get( dive, "coords.journey" ), _.get( dive, "coords.main[0]" )));
-
-		const starting = _.head( coords );
-		const startingX = _.get( starting, "x" );
-		const startingZ = _.get( starting, "z" );
-
-		const points = _.map( coords, point => new THREE.Vector3( point.x - startingX, 0, point.z - startingZ ));
-
-		return {
-			lineGeometry: new THREE.BufferGeometry().setFromPoints( points ),
-			start: [ startingX, -1, startingZ ],
-		};
-	})), [ processedDives ]);
-
-	// useEffect(() => {
-	// 	if ( !rotationIntervalId ) setRotationIntervalId( setInterval(() => setMeshYRotationDegrees( y => y + 1 ), 10 ));
-
-	// 	return () => {
-	// 		if ( rotationIntervalId ) clearInterval( rotationIntervalId );
-	// 	};
-	// }, [ rotationIntervalId ]);
-
-	const meshYRotationRads = meshYRotationDegrees * Math.PI / 180;
-
-	return <>
-		<pointLight position={[ 5, 5, 5 ]} />
-		{ !_.isEmpty( mainMarkers ) && _.map( mainMarkers, ({ x, z }, i ) => (
-			<mesh key={ i } visible position={[ x, -1, z ]} rotation={[ 0, meshYRotationRads, 0 ]}> 
-				<octahedronGeometry />
-				<meshStandardMaterial color={ theme.palette.green.main } />
-			</mesh>
-		)) }
-		{ !_.isEmpty( journeyMarkers ) && _.map( journeyMarkers, ({ x, z }, i ) => (
-			<mesh key={ i } visible position={[ x, -1, z ]} rotation={[ 0, meshYRotationRads, 0 ]}>
-				<octahedronGeometry />
-				<meshStandardMaterial color={ theme.palette.purple.main } emissiveIntensity={ 0.25 } roughness={ 0.8 } />
-			</mesh>
-		)) }
-		{ !_.isEmpty( routes ) && _.map( routes, ({ lineGeometry, start } , i ) => {
-			return (
-				<group position={ start }>
-					<line geometry={ lineGeometry } key={ i }>
-						<lineBasicMaterial attach="material" color={ theme.palette.green.main } />
-					</line>
-				</group>
-			);
-		})}
-		{ !_.isEmpty( journeys ) && _.map( journeys, ({ lineGeometry, start } , i ) => {
-			return (
-				<group position={ start }>
-					<line geometry={ lineGeometry } key={ i }>
-						<lineBasicMaterial attach="material" color={ theme.palette.purple.main } />
-					</line>
-				</group>
-			);
-		})}
-		{ !_.isEmpty( areas ) && null }
-	</>;
+	return null;
 });
-ThreeRenderer.propTypes = {
-	processedDives: PropTypes.array,
+Camera.propTypes = {
 	deviceOrientation: PropTypes.object,
-	theme: PropTypes.object,
 };
 
-export default ThreeRenderer;
+export {
+	Entities,
+	Camera,
+};
 
 const toRadians = degrees => degrees * Math.PI / 180;
