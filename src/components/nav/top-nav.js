@@ -115,7 +115,7 @@ export default function TopNav () {
 							<PhotoCameraOutlined />
 						</ListItemAvatar>
 						<ListItemText>
-							Locate
+							Locate (experimental)
 						</ListItemText>
 					</ListItem>
 					<ListItem className={ classes.listItem } button selected={ selectedDrawerItem === "/account" } onClick={ () => handleNavigate( "/account" ) }>

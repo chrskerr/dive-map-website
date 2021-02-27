@@ -15,6 +15,9 @@ const useStyles = makeStyles( theme => ({
 	large: {
 		width: theme.spacing( 10 ),
 	},
+	xlarge: {
+		width: theme.spacing( 20 ),
+	},
 }));
 
 const icons = {

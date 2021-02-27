@@ -1,6 +1,7 @@
 
 import React from "react";
 import PropTypes from "prop-types";
+import { CssBaseline } from "@material-ui/core";
 import { createMuiTheme, ThemeProvider } from "@material-ui/core/styles";
 import { purple, green } from "@material-ui/core/colors";
 
@@ -33,7 +34,10 @@ const theme = createMuiTheme({
 });
 
 export default function Theme ({ children }) { 
-	return <ThemeProvider theme={ theme }>{ children && children }</ThemeProvider>;
+	return <>
+		<CssBaseline /> 
+		<ThemeProvider theme={ theme }>{ children && children }</ThemeProvider>
+	</>;
 }
 Theme.propTypes = {
 	children: PropTypes.node,
