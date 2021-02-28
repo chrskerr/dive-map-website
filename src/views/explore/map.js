@@ -13,7 +13,6 @@ import { MapContainer, TileLayer, MapConsumer, ScaleControl, Marker, Tooltip, Po
 import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
 import "../../../node_modules/leaflet/dist/leaflet.css";
 import "../../../node_modules/leaflet-geosearch/dist/geosearch.css";
-import "../../css/icomoon-fa-v1.0/style.css";
 
 // App
 import { State } from "../";

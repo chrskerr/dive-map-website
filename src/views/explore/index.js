@@ -91,6 +91,10 @@ export default function Index () {
 		else return lat > bounds.lat0 && lat < bounds.lat1 && lng > bounds.lng0 && lng < bounds.lng1;
 	}), [ bounds, dives ]);
 
+	useEffect(() => {
+		return () => dispatch({ type: "explore.setView", view: "reset" });
+	}, []);
+
 	return <Explore dives={ filteredDiveSites } />;
 }
 

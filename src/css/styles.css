@@ -1,0 +1,12 @@
+
+@import "./icomoon-fa/style.css";
+/* @import "./normalise.css"; */
+
+body {
+	overflow: hidden;
+	width: 100vw !important;
+}
+
+#root {
+	background-color: #fafafa;
+}

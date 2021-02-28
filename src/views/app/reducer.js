@@ -31,7 +31,7 @@ export default ( state, action ) => {
 				...payload,
 			},
 		};
-	case "purgee":
+	case "purge":
 		return { ...initialState };
 
 	// Explore
@@ -113,6 +113,11 @@ export default ( state, action ) => {
 						..._.get( state, "explore.dive" ),
 					},
 				},
+			};
+		case "reset":
+			return {
+				...state,
+				explore: _.get( initialState, "explore" ),
 			};
 
 		default: 
